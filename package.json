@@ -1,0 +1,92 @@
+{
+	"name": "-trpc-svelte-query",
+	"version": "10.9.0",
+	"description": "tRPC Svelte lib",
+	"author": "Ottomated",
+	"license": "MIT",
+	"main": "dist/index.js",
+	"module": "dist/index.mjs",
+	"typings": "dist/index.d.ts",
+	"homepage": "https://trpc.io",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/trpc/trpc.git",
+		"directory": "packages/svelte-query"
+	},
+	"scripts": {
+		"build": "tsup",
+		"lint": "eslint --fix --ext \".js,.ts\" --report-unused-disable-directives src",
+		"ts-watch": "tsc --project tsconfig.watch.json"
+	},
+	"exports": {
+		".": {
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./ssr": {
+			"import": "./dist/ssr/index.mjs",
+			"require": "./dist/ssr/index.js",
+			"default": "./dist/ssr/index.js"
+		},
+		"./shared": {
+			"import": "./dist/shared/index.mjs",
+			"require": "./dist/shared/index.js",
+			"default": "./dist/shared/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"src",
+		"README.md",
+		"ssr",
+		"shared"
+	],
+	"eslintConfig": {
+		"rules": {
+			"no-restricted-imports": [
+				"error",
+				"@trpc/svelte-query"
+			]
+		}
+	},
+	"peerDependencies": {
+		"@tanstack/svelte-query": "^4.3.8",
+		"@trpc/client": "^10.8.0",
+		"@trpc/server": "^10.8.0",
+		"svelte": "^3.55.1"
+	},
+	"devDependencies": {
+		"@rollup/plugin-node-resolve": "^15.0.1",
+		"@swc/core": "^1.3.31",
+		"@tanstack/svelte-query": "^4.24.4",
+		"@trivago/prettier-plugin-sort-imports": "^4.0.0",
+		"@trpc/client": "^10.9.0",
+		"@trpc/server": "^10.9.0",
+		"@types/node": "^18.11.18",
+		"@typescript-eslint/eslint-plugin": "^5.50.0",
+		"@typescript-eslint/parser": "^5.50.0",
+		"eslint": "^8.33.0",
+		"eslint-config-prettier": "^8.6.0",
+		"eslint-plugin-prettier": "^4.2.1",
+		"eslint-plugin-unicorn": "^45.0.2",
+		"prettier": "^2.8.3",
+		"rollup": "^3.12.0",
+		"rollup-plugin-delete": "^2.0.0",
+		"rollup-plugin-multi-input": "^1.3.3",
+		"rollup-plugin-node-externals": "^5.1.0",
+		"rollup-plugin-swc3": "^0.8.0",
+		"rollup-plugin-typescript2": "^0.34.1",
+		"tslib": "^2.5.0",
+		"tsup": "^6.5.0",
+		"tsx": "^3.9.0",
+		"typescript": "^4.9.5",
+		"zod": "^3.0.0"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"esm-env": "^1.0.0"
+	}
+}
