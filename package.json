@@ -1,12 +1,24 @@
 {
-	"name": "-trpc-svelte-query",
-	"version": "10.9.0",
+	"name": "trpc-svelte-query",
+	"version": "0.0.1",
 	"description": "tRPC Svelte lib",
 	"author": "Ottomated",
 	"license": "MIT",
 	"main": "dist/index.js",
 	"module": "dist/index.mjs",
-	"typings": "dist/index.d.ts",
+	"typesVersions": {
+		"*": {
+			"*": [
+				"dist/index.d.ts"
+			],
+			"ssr": [
+				"dist/ssr/index.d.ts"
+			],
+			"shared": [
+				"dist/shared/index.d.ts"
+			]
+		}
+	},
 	"homepage": "https://trpc.io",
 	"repository": {
 		"type": "git",
@@ -46,7 +58,7 @@
 		"rules": {
 			"no-restricted-imports": [
 				"error",
-				"@trpc/svelte-query"
+				"trpc-svelte-query"
 			]
 		}
 	},
