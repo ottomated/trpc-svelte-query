@@ -126,7 +126,9 @@ export function transformResult<TRouter extends AnyRouter, TOutput>(
 		// Use the data transformers on the JSON-response
 		result = transformResultInner(response, runtime);
 	} catch (err) {
-		throw new TRPCClientError('Unable to transform response from server');
+		throw new TRPCClientError('Unable to transform response from server', {
+			cause: err as Error,
+		});
 	}
 
 	// check that output of the transformers is a valid TRPCResponse
