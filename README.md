@@ -12,25 +12,25 @@
   <img src="https://assets.trpc.io/www/v10/v10-dark-landscape.gif" alt="Demo" />
 </p>
 
-# `@trpc/svelte-query`
+# `trpc-svelte-query`
 
 > A tRPC wrapper around @tanstack/svelte-query.
 
 ## Documentation
 
-Full documentation for `@trpc/svelte-query` can be found [here](https://trpc.io/docs/svelte-query)
+Full documentation for `trpc-svelte-query` can be found [here](https://trpc.io/docs/svelte-query)
 
 ## Installation
 
 ```bash
 # npm
-npm install @trpc/svelte-query @tanstack/svelte-query
+npm install trpc-svelte-query @tanstack/svelte-query
 
 # Yarn
-yarn add @trpc/svelte-query @tanstack/svelte-query
+yarn add trpc-svelte-query @tanstack/svelte-query
 
 # pnpm
-pnpm add @trpc/svelte-query @tanstack/svelte-query
+pnpm add trpc-svelte-query @tanstack/svelte-query
 ```
 
 ## Basic Example
@@ -38,7 +38,7 @@ pnpm add @trpc/svelte-query @tanstack/svelte-query
 Setup tRPC in `lib/trpc/client.ts`
 
 ```ts
-import { createTRPCSvelte, httpBatchLink } from '@trpc/svelte-query';
+import { createTRPCSvelte, httpBatchLink } from 'trpc-svelte-query';
 // Import the router type from your server file
 import type { AppRouter } from './routes/_app';
 
