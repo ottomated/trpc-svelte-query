@@ -52,7 +52,7 @@ Set up svelte-query's provider to in your root layout.
 ```svelte
 <script lang="ts">
   import { QueryClientProvider, QueryClient } from '@tanstack/svelte-query';
-	import { trpc } from '$lib/trpc/client';
+  import { trpc } from '$lib/trpc/client';
 </script>
 
 <QueryClientProvider client={trpc.queryClient}>
@@ -64,18 +64,18 @@ Now in any component, you can query your API using the client you created.
 
 ```svelte
 <script lang="ts">
-	import { trpc } from '$lib/trpc/client';
+  import { trpc } from '$lib/trpc/client';
 
-	const query = trpc.greeting.query({ name: 'tRPC' });
+  const query = trpc.greeting.query({ name: 'tRPC' });
 
 </script>
 
 {#if $query.isSuccess}
-	<p>{$query.data.greeting}</p>
+  <p>{$query.data.greeting}</p>
 {:else if $query.isError}
-	<p>{$query.error.message}</p>
+  <p>{$query.error.message}</p>
 {:else}
-	<p>Loading...</p>
+  <p>Loading...</p>
 {/if}
 ```
 
@@ -117,17 +117,17 @@ Update your root layout to hydrate that SSR data.
 
 ```svelte
 <script lang="ts">
-	import { trpc } from '$lib/trpc/client';
-	import { QueryClientProvider } from '@tanstack/svelte-query';
-	import type { LayoutData } from './$types';
+  import { trpc } from '$lib/trpc/client';
+  import { QueryClientProvider } from '@tanstack/svelte-query';
+  import type { LayoutData } from './$types';
 
-	export let data: LayoutData;
+  export let data: LayoutData;
 
-	const queryClient = trpc.hydrateQueryClient(data.trpc);
+  const queryClient = trpc.hydrateQueryClient(data.trpc);
 </script>
 
 <QueryClientProvider client={queryClient}>
-	<slot />
+  <slot />
 </QueryClientProvider>
 ```
 
