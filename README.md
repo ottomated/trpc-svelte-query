@@ -86,7 +86,7 @@ Update your `lib/trpc/client.ts` file to use the Svelte `ssrLink`.
 The `ssrLink` wraps around any other link you're using, using your link during normal fetching and custom logic
 during SSR.
 
-```svelte
+```ts
 import { createTRPCSvelte, httpBatchLink } from 'trpc-svelte-query';
 import { ssrLink } from 'trpc-svelte-query/ssr';
 import type { AppRouter } from './routes/_app';
