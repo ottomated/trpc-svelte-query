@@ -35,7 +35,7 @@ pnpm add trpc-svelte-query @tanstack/svelte-query
 
 ## Basic Example
 
-Setup tRPC in `lib/trpc/client.ts`
+Set up tRPC in `lib/trpc/client.ts`
 
 ```ts
 import { createTRPCSvelte, httpBatchLink } from 'trpc-svelte-query';
@@ -47,7 +47,7 @@ export const trpc = createTRPCSvelte<AppRouter>({
 });
 ```
 
-Set up svelte-query's provider to in your root layout.
+Set up `@tanstack/svelte-query`'s provider in your root layout.
 
 ```svelte
 <script lang="ts">
