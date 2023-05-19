@@ -35,18 +35,12 @@ import {
 } from '@trpc/server/shared';
 import { BROWSER } from 'esm-env';
 import { getArrayQueryKey } from './internals/getArrayQueryKey';
+import type { TRPCSSRData } from './server/utils';
 import {
 	DecorateProcedureUtils,
 	DecorateRouterUtils,
 	callUtilMethod,
 } from './shared';
-import {
-	SveltekitRequestEventInput,
-	TRPCSSRData,
-	getSSRData,
-	localsSymbol,
-	parseSSRArgs,
-} from './ssr';
 import { splitUserOptions } from './utils/splitUserOptions';
 
 /**
@@ -78,47 +72,22 @@ type DecorateProcedure<TProcedure extends AnyProcedure> =
 					inferTransformedProcedureOutput<TProcedure>,
 					TRPCClientErrorLike<TProcedure>
 				>;
-		  } & (inferProcedureInput<TProcedure> extends void
+		  } & (inferProcedureInput<TProcedure> extends { cursor?: any }
 				? {
-						ssr: (
-							event: SveltekitRequestEventInput,
-							options?: TRPCRequestOptions,
-						) => Promise<
-							inferTransformedProcedureOutput<TProcedure> | undefined
+						infiniteQuery: (
+							input: Omit<inferProcedureInput<TProcedure>, 'cursor'>,
+							options?: UserExposedOptions<
+								CreateInfiniteQueryOptions<
+									inferTransformedProcedureOutput<TProcedure>,
+									TRPCClientErrorLike<TProcedure>
+								>
+							>,
+						) => CreateInfiniteQueryResult<
+							inferTransformedProcedureOutput<TProcedure>,
+							TRPCClientErrorLike<TProcedure>
 						>;
 				  }
-				: {
-						ssr: (
-							input: inferProcedureInput<TProcedure>,
-							event: SveltekitRequestEventInput,
-							options?: TRPCRequestOptions,
-						) => Promise<
-							inferTransformedProcedureOutput<TProcedure> | undefined
-						>;
-				  }) &
-				(inferProcedureInput<TProcedure> extends { cursor?: any }
-					? {
-							infiniteQuery: (
-								input: Omit<inferProcedureInput<TProcedure>, 'cursor'>,
-								options?: UserExposedOptions<
-									CreateInfiniteQueryOptions<
-										inferTransformedProcedureOutput<TProcedure>,
-										TRPCClientErrorLike<TProcedure>
-									>
-								>,
-							) => CreateInfiniteQueryResult<
-								inferTransformedProcedureOutput<TProcedure>,
-								TRPCClientErrorLike<TProcedure>
-							>;
-							ssrInfinite: (
-								input: inferProcedureInput<TProcedure>,
-								event: SveltekitRequestEventInput,
-								options?: TRPCRequestOptions,
-							) => Promise<
-								inferTransformedProcedureOutput<TProcedure> | undefined
-							>;
-					  }
-					: object)
+				: object)
 		: TProcedure extends AnyMutationProcedure
 		? {
 				mutation: <TContext = unknown>(
@@ -153,8 +122,7 @@ type DecoratedProcedureRecord<TProcedures extends ProcedureRouterRecord> = {
  */
 export type CreateTRPCSvelteBase<_TRouter extends AnyRouter> = {
 	queryClient: QueryClient;
-	ssr: typeof getSSRData;
-	hydrateQueryClient: (data: TRPCSSRData) => QueryClient;
+	hydrateFromServer: (data: TRPCSSRData) => QueryClient;
 };
 
 export type CreateTRPCSvelte<TRouter extends AnyRouter> = ProtectedIntersection<
@@ -166,8 +134,6 @@ const clientMethods = {
 	query: [1, 'query'],
 	mutation: [0, 'any'],
 	infiniteQuery: [1, 'infinite'],
-	ssr: [-1, 'query'],
-	ssrInfinite: [-1, 'infinite'],
 } as const;
 
 type ClientMethod = keyof typeof clientMethods;
@@ -184,25 +150,19 @@ function createSvelteInternalProxy<TRouter extends AnyRouter>(
 	return createFlatProxy<CreateTRPCSvelte<TRouter>>((firstPath) => {
 		switch (firstPath) {
 			case 'queryClient': {
-				if (BROWSER) {
-					return queryClient;
-				} else {
-					throw new Error('`trpc.queryClient` is only available on the client');
-				}
+				// if (BROWSER) {
+				return queryClient;
+				// } else {
+				// 	throw new Error('`trpc.queryClient` is only available on the client');
+				// }
 			}
-			case 'ssr':
-				if (BROWSER) {
-					throw new Error('`trpc.ssr` is only available on the server');
-				} else {
-					return getSSRData;
-				}
-			case 'hydrateQueryClient': {
+			case 'hydrateFromServer': {
 				return (data: TRPCSSRData) => {
 					let client = queryClient;
 					if (!BROWSER) {
 						client = new QueryClient(opts.queryClientConfig);
 					}
-					for (const [key, value] of data.entries()) {
+					for (const [key, value] of data) {
 						client.setQueryData(key, value);
 					}
 					return client;
@@ -239,14 +199,10 @@ function createSvelteInternalProxy<TRouter extends AnyRouter>(
 			const [trpcOptions, tanstackQueryOptions] = splitUserOptions(options);
 
 			// Create the query key - input is undefined for mutations
-			const key = (
-				method === 'ssr'
-					? undefined
-					: getArrayQueryKey(
-							path,
-							method === 'mutation' ? undefined : args[0],
-							queryType,
-					  )
+			const key = getArrayQueryKey(
+				path,
+				method === 'mutation' ? undefined : args[0],
+				queryType,
 			) as QueryKey;
 
 			const enabled = tanstackQueryOptions?.enabled !== false && BROWSER;
@@ -277,34 +233,6 @@ function createSvelteInternalProxy<TRouter extends AnyRouter>(
 							return client.query(joinedPath, input, trpcOptions);
 						},
 					});
-				case 'ssr':
-				case 'ssrInfinite':
-					if (BROWSER) {
-						throw new TypeError(
-							`\`trpc.${joinedPath}.ssr\` is only available on the server`,
-						);
-					} else {
-						const [input, event, options] = parseSSRArgs(args);
-						if (event.isDataRequest) return;
-
-						const key = getArrayQueryKey(path, input, queryType);
-
-						return client
-							.query(joinedPath, input, {
-								...options,
-								context: {
-									...options?.context,
-									fetch: event.fetch,
-								},
-							})
-							.then((data) => {
-								if (!event.locals[localsSymbol]) {
-									event.locals[localsSymbol] = new Map();
-								}
-								event.locals[localsSymbol].set(key, data);
-								return data;
-							});
-					}
 				default:
 					throw new TypeError(`trpc.${joinedPath}.${method} is not a function`);
 			}
@@ -328,9 +256,4 @@ export function createTRPCSvelte<TRouter extends AnyRouter>(
 	const proxy = createSvelteInternalProxy(client, opts);
 
 	return proxy as any;
-
-	// const hooks = createHooksInternal<TRouter, TSSRContext>(opts);
-	// const proxy = createHooksInternalProxy<TRouter, TSSRContext, TFlags>(hooks);
-
-	// return proxy as any;
 }

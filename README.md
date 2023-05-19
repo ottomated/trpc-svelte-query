@@ -23,27 +23,29 @@ Full documentation for `trpc-svelte-query` can be found [here](https://trpc.io/d
 ## Installation
 
 ```bash
-# npm
-npm install trpc-svelte-query @tanstack/svelte-query
+# pnpm
+pnpm add trpc-svelte-query @tanstack/svelte-query
 
 # Yarn
 yarn add trpc-svelte-query @tanstack/svelte-query
 
-# pnpm
-pnpm add trpc-svelte-query @tanstack/svelte-query
+# npm
+npm install trpc-svelte-query @tanstack/svelte-query
 ```
 
 ## Basic Example
 
-Set up tRPC in `lib/trpc/client.ts`
+Set up tRPC in `lib/trpc/index.ts`
 
 ```ts
 import { createTRPCSvelte, httpBatchLink } from 'trpc-svelte-query';
 // Import the router type from your server file
-import type { AppRouter } from './routes/_app';
+import type { AppRouter } from '$lib/server/routes/_app';
 
 export const trpc = createTRPCSvelte<AppRouter>({
-  links: [httpBatchLink()],
+  links: [httpBatchLink({
+		url: '/api/trpc',
+	})],
 });
 ```
 
@@ -51,13 +53,28 @@ Set up `@tanstack/svelte-query`'s provider in your root layout.
 
 ```svelte
 <script lang="ts">
-  import { QueryClientProvider, QueryClient } from '@tanstack/svelte-query';
+  import { QueryClientProvider } from '@tanstack/svelte-query';
   import { trpc } from '$lib/trpc/client';
 </script>
 
 <QueryClientProvider client={trpc.queryClient}>
   <slot />
 </QueryClientProvider>
+```
+
+Set up your API handler in `routes/api/trpc/[...trpc]/+server.ts`
+
+```ts
+import { createTRPCSvelteServer } from "trpc-svelte-query/server";
+import { appRouter } from "$lib/server/routes/_app";
+
+const trpcServer = createTRPCSvelteServer({
+	endpoint: '/api/trpc',
+	router: appRouter,
+});
+
+export const GET = trpcServer.handler;
+export const POST = trpcServer.handler;
 ```
 
 Now in any component, you can query your API using the client you created.
@@ -81,34 +98,36 @@ Now in any component, you can query your API using the client you created.
 
 ## SSR with SvelteKit
 
-Update your `lib/trpc/client.ts` file to use the Svelte `ssrLink`.
-
-The `ssrLink` wraps around any other link you're using, using your link during normal fetching and custom logic
-during SSR.
+Extract your `trpcServer` instance into its own file (i.e. `$/lib/server/server`). You'll use this object to handle SSR.
 
 ```ts
-import { createTRPCSvelte, httpBatchLink } from 'trpc-svelte-query';
-import { ssrLink } from 'trpc-svelte-query/ssr';
-import type { AppRouter } from './routes/_app';
+import { createTRPCSvelteServer } from "trpc-svelte-query/server";
+import { appRouter } from "$lib/server/routes/_app";
 
-export const trpc = createTRPCSvelte<AppRouter>({
-  links: [
-    ssrLink(httpBatchLink)({
-      url: '/api/trpc',
-    }),
-  ],
+export const trpcServer = createTRPCSvelteServer({
+	endpoint: '/api/trpc',
+	router: appRouter,
 });
+```
+
+Use that instance in your api endpoint:
+
+```ts
+import { trpcServer } from '$lib/server/server';
+
+export const GET = trpcServer.handler;
+export const POST = trpcServer.handler;
 ```
 
 Add a root `+layout.server.ts` to pass SSR data from the server to the client.
 
 ```ts
-import { trpc } from '$lib/trpc/client';
+import { trpcServer } from '$lib/server/server';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async (event) => {
   return {
-    trpc: trpc.ssr(event),
+    trpc: trpcServer.hydrateToClient(event),
   };
 };
 ```
@@ -123,7 +142,7 @@ Update your root layout to hydrate that SSR data.
 
   export let data: LayoutData;
 
-  const queryClient = trpc.hydrateQueryClient(data.trpc);
+  const queryClient = trpc.hydrateFromServer(data.trpc);
 </script>
 
 <QueryClientProvider client={queryClient}>
@@ -131,13 +150,13 @@ Update your root layout to hydrate that SSR data.
 </QueryClientProvider>
 ```
 
-Add a `+page.server.ts` file to SSR specific queries.
+Add a `+page.server.ts` file to preload specific queries.
 
 ```ts
-import { trpc } from '$lib/trpc/client';
+import { trpc } from '$lib/server/server';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
-  await trpc.greeting.ssr({ name: "tRPC" }, event);
+	await trpcServer.greeting.ssr({ name: 'tRPC' }, event);
 };
 ```
