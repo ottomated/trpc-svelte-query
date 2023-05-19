@@ -62,12 +62,12 @@
 		"svelte": "^3.55.1"
 	},
 	"devDependencies": {
-		"@sveltejs/kit": "^1.16.3",
+		"@sveltejs/kit": "^1.18.0",
 		"@tanstack/svelte-query": "^4.29.7",
 		"@trivago/prettier-plugin-sort-imports": "^4.1.1",
 		"@trpc/client": "^10.26.0",
 		"@trpc/server": "^10.26.0",
-		"@types/node": "^20.1.7",
+		"@types/node": "^20.2.1",
 		"@typescript-eslint/eslint-plugin": "^5.59.6",
 		"@typescript-eslint/parser": "^5.59.6",
 		"eslint": "^8.40.0",
@@ -75,7 +75,7 @@
 		"eslint-plugin-prettier": "^4.2.1",
 		"eslint-plugin-unicorn": "^47.0.0",
 		"prettier": "^2.8.8",
-		"tslib": "^2.5.0",
+		"tslib": "^2.5.2",
 		"tsup": "^6.7.0",
 		"typescript": "^5.0.4"
 	},
