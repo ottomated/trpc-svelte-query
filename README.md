@@ -43,9 +43,11 @@ import { createTRPCSvelte, httpBatchLink } from 'trpc-svelte-query';
 import type { AppRouter } from '$lib/server/routes/_app';
 
 export const trpc = createTRPCSvelte<AppRouter>({
-  links: [httpBatchLink({
-		url: '/api/trpc',
-	})],
+  links: [
+		httpBatchLink({
+			url: '/api/trpc',
+		}),
+	],
 });
 ```
 
@@ -65,8 +67,8 @@ Set up `@tanstack/svelte-query`'s provider in your root layout.
 Set up your API handler in `routes/api/trpc/[...trpc]/+server.ts`
 
 ```ts
-import { createTRPCSvelteServer } from "trpc-svelte-query/server";
-import { appRouter } from "$lib/server/routes/_app";
+import { createTRPCSvelteServer } from 'trpc-svelte-query/server';
+import { appRouter } from '$lib/server/routes/_app';
 
 const trpcServer = createTRPCSvelteServer({
 	endpoint: '/api/trpc',
@@ -84,7 +86,6 @@ Now in any component, you can query your API using the client you created.
   import { trpc } from '$lib/trpc/client';
 
   const query = trpc.greeting.query({ name: 'tRPC' });
-
 </script>
 
 {#if $query.isSuccess}
@@ -101,8 +102,8 @@ Now in any component, you can query your API using the client you created.
 Extract your `trpcServer` instance into its own file (i.e. `$lib/server/server`). You'll use this object to handle SSR.
 
 ```ts
-import { createTRPCSvelteServer } from "trpc-svelte-query/server";
-import { appRouter } from "$lib/server/routes/_app";
+import { createTRPCSvelteServer } from 'trpc-svelte-query/server';
+import { appRouter } from '$lib/server/routes/_app';
 
 export const trpcServer = createTRPCSvelteServer({
 	endpoint: '/api/trpc',
