@@ -44,10 +44,10 @@ import type { AppRouter } from '$lib/server/routes/_app';
 
 export const trpc = createTRPCSvelte<AppRouter>({
   links: [
-		httpBatchLink({
-			url: '/api/trpc',
-		}),
-	],
+    httpBatchLink({
+      url: '/api/trpc',
+    }),
+  ],
 });
 ```
 
@@ -71,8 +71,8 @@ import { createTRPCSvelteServer } from 'trpc-svelte-query/server';
 import { appRouter } from '$lib/server/routes/_app';
 
 const trpcServer = createTRPCSvelteServer({
-	endpoint: '/api/trpc',
-	router: appRouter,
+  endpoint: '/api/trpc',
+  router: appRouter,
 });
 
 export const GET = trpcServer.handler;
@@ -106,8 +106,8 @@ import { createTRPCSvelteServer } from 'trpc-svelte-query/server';
 import { appRouter } from '$lib/server/routes/_app';
 
 export const trpcServer = createTRPCSvelteServer({
-	endpoint: '/api/trpc',
-	router: appRouter,
+  endpoint: '/api/trpc',
+  router: appRouter,
 });
 ```
 
@@ -158,6 +158,6 @@ import { trpc } from '$lib/server/server';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
-	await trpcServer.greeting.ssr({ name: 'tRPC' }, event);
+  await trpcServer.greeting.ssr({ name: 'tRPC' }, event);
 };
 ```
