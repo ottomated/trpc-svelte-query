@@ -98,7 +98,7 @@ Now in any component, you can query your API using the client you created.
 
 ## SSR with SvelteKit
 
-Extract your `trpcServer` instance into its own file (i.e. `$/lib/server/server`). You'll use this object to handle SSR.
+Extract your `trpcServer` instance into its own file (i.e. `$lib/server/server`). You'll use this object to handle SSR.
 
 ```ts
 import { createTRPCSvelteServer } from "trpc-svelte-query/server";
