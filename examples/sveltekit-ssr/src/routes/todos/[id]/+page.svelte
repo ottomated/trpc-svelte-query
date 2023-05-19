@@ -9,4 +9,6 @@
 
 {#if $todo.isSuccess}
 	<p>Data: {$todo.data}</p>
+{:else if $todo.isError}
+	<p>Error: {$todo.error.message}</p>
 {/if}

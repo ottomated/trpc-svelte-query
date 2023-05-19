@@ -20,9 +20,8 @@ export const todosRouter = router({
 
       if (!db.has(input.id)) {
         throw new TRPCError({
-					code: 'NOT_FOUND',
-					message: 'Todo not found',
-					
+          code: 'NOT_FOUND',
+          message: 'Todo not found',
         });
       }
       return db.get(input.id)!;
