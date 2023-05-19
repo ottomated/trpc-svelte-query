@@ -143,7 +143,7 @@ Update your root layout to hydrate that SSR data.
 
   export let data: LayoutData;
 
-  const queryClient = trpc.hydrateFromServer(data.trpc);
+  $: queryClient = trpc.hydrateFromServer(data.trpc);
 </script>
 
 <QueryClientProvider client={queryClient}>
