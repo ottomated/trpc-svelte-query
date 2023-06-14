@@ -115,14 +115,22 @@ function createInternalProxy<TRouter extends AnyRouter>(
 
 			const [rawInput, event] = parseSSRArgs(args);
 
+			const createContext = async () => {
+				return options.createContext?.(event);
+			};
+
 			const key = getArrayQueryKey(path, rawInput, procedureType);
-			return procedure({
-				ctx: options.createContext?.(event),
-				rawInput,
-				path: fullPath,
-				type: 'query',
-			})
-				.then((result) => {
+
+			createContext()
+				.then((ctx) =>
+					procedure({
+						ctx,
+						rawInput,
+						path: fullPath,
+						type: 'query',
+					}),
+				)
+				.then(async (result) => {
 					const locals = event.locals as RequestEventLocals;
 
 					if (!locals[localsSymbol]) {
