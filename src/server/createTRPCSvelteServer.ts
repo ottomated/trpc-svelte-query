@@ -121,7 +121,7 @@ function createInternalProxy<TRouter extends AnyRouter>(
 
 			const key = getArrayQueryKey(path, rawInput, procedureType);
 
-			createContext()
+			return createContext()
 				.then((ctx) =>
 					procedure({
 						ctx,
