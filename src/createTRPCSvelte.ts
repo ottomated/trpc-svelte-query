@@ -7,7 +7,7 @@ import {
 	CreateQueryResult,
 	QueryClient,
 	QueryClientConfig,
-	QueryKey,
+	StoreOrVal,
 	createInfiniteQuery,
 	createMutation,
 	createQuery,
@@ -19,7 +19,7 @@ import {
 	TRPCUntypedClient,
 	createTRPCUntypedClient,
 } from '@trpc/client';
-import {
+import type {
 	AnyMutationProcedure,
 	AnyProcedure,
 	AnyQueryProcedure,
@@ -34,6 +34,7 @@ import {
 	inferTransformedProcedureOutput,
 } from '@trpc/server/shared';
 import { BROWSER } from 'esm-env';
+import { Readable, derived, readable } from 'svelte/store';
 import { getArrayQueryKey } from './internals/getArrayQueryKey';
 import type { TRPCSSRData } from './server/utils';
 import {
@@ -41,31 +42,39 @@ import {
 	DecorateRouterUtils,
 	callUtilMethod,
 } from './shared';
+import { isSvelteStore } from './utils/isSvelteStore';
 import { splitUserOptions } from './utils/splitUserOptions';
 
 /**
+ * Options passed to @tanstack/svelte-query that are exposed to the user
  * @internal
  */
-export type TodoTypeName<TOptions> = Omit<
+export type UserExposedTanstackQueryOptions<TOptions> = Omit<
 	TOptions,
 	'queryFn' | 'queryKey' | 'mutationFn' | 'mutationKey'
 >;
 
+type inferStoreOrVal<TStore> = TStore extends StoreOrVal<infer U> ? U : TStore;
+
 /**
  * @internal
  */
-export type UserExposedOptions<TOptions> = TodoTypeName<TOptions> &
+export type UserExposedOptions<TOptions> = UserExposedTanstackQueryOptions<
+	inferStoreOrVal<TOptions>
+> &
 	TRPCRequestOptions;
 
 type DecorateProcedure<TProcedure extends AnyProcedure> =
 	TProcedure extends AnyQueryProcedure
 		? {
 				query: (
-					input: inferProcedureInput<TProcedure>,
-					options?: UserExposedOptions<
-						CreateQueryOptions<
-							inferTransformedProcedureOutput<TProcedure>,
-							TRPCClientErrorLike<TProcedure>
+					input: StoreOrVal<inferProcedureInput<TProcedure>>,
+					options?: StoreOrVal<
+						UserExposedOptions<
+							CreateQueryOptions<
+								inferTransformedProcedureOutput<TProcedure>,
+								TRPCClientErrorLike<TProcedure>
+							>
 						>
 					>,
 				) => CreateQueryResult<
@@ -75,11 +84,15 @@ type DecorateProcedure<TProcedure extends AnyProcedure> =
 		  } & (inferProcedureInput<TProcedure> extends { cursor?: any }
 				? {
 						infiniteQuery: (
-							input: Omit<inferProcedureInput<TProcedure>, 'cursor'>,
-							options?: UserExposedOptions<
-								CreateInfiniteQueryOptions<
-									inferTransformedProcedureOutput<TProcedure>,
-									TRPCClientErrorLike<TProcedure>
+							input: StoreOrVal<
+								Omit<inferProcedureInput<TProcedure>, 'cursor'>
+							>,
+							options: StoreOrVal<
+								UserExposedOptions<
+									CreateInfiniteQueryOptions<
+										inferTransformedProcedureOutput<TProcedure>,
+										TRPCClientErrorLike<TProcedure>
+									>
 								>
 							>,
 						) => CreateInfiniteQueryResult<
@@ -91,12 +104,14 @@ type DecorateProcedure<TProcedure extends AnyProcedure> =
 		: TProcedure extends AnyMutationProcedure
 		? {
 				mutation: <TContext = unknown>(
-					opts?: UserExposedOptions<
-						CreateMutationOptions<
-							inferTransformedProcedureOutput<TProcedure>,
-							TRPCClientErrorLike<TProcedure>,
-							inferProcedureInput<TProcedure>,
-							TContext
+					opts?: StoreOrVal<
+						UserExposedOptions<
+							CreateMutationOptions<
+								inferTransformedProcedureOutput<TProcedure>,
+								TRPCClientErrorLike<TProcedure>,
+								inferProcedureInput<TProcedure>,
+								TContext
+							>
 						>
 					>,
 				) => CreateMutationResult<
@@ -196,43 +211,83 @@ function createSvelteInternalProxy<TRouter extends AnyRouter>(
 
 			const [optionIndex, queryType] = methodData;
 			const options = args[optionIndex] as UserExposedOptions<any> | undefined;
-			const [trpcOptions, tanstackQueryOptions] = splitUserOptions(options);
+
+			const optionsStore =
+				options && isSvelteStore(options) ? options : readable(options ?? {});
+
+			const inputStore =
+				// Mutation doesn't have input
+				method === 'mutation'
+					? undefined
+					: // If it's a store, use it
+					args[0] && isSvelteStore(args[0])
+					? args[0]
+					: // wrap the input in a store
+					  readable(args[0]);
 
 			// Create the query key - input is undefined for mutations
-			const key = getArrayQueryKey(
-				path,
-				method === 'mutation' ? undefined : args[0],
-				queryType,
-			) as QueryKey;
-
-			const enabled = tanstackQueryOptions?.enabled !== false && BROWSER;
 
 			switch (method) {
-				case 'query':
-					return createQuery({
-						...tanstackQueryOptions,
-						enabled,
-						queryKey: key,
-						queryFn: () => client.query(joinedPath, args[0], trpcOptions),
-					});
-				case 'mutation': {
-					return createMutation({
-						...tanstackQueryOptions,
-						mutationKey: key,
-						mutationFn: (variables: any) =>
-							client.mutation(joinedPath, variables, trpcOptions),
-					});
-				}
-				case 'infiniteQuery':
-					return createInfiniteQuery({
-						...tanstackQueryOptions,
-						enabled,
-						queryKey: key,
-						queryFn: (context) => {
-							const input = { ...args[0], cursor: context.pageParam };
-							return client.query(joinedPath, input, trpcOptions);
+				case 'query': {
+					type Options = inferStoreOrVal<CreateQueryOptions>;
+					const options = derived(
+						[
+							inputStore!,
+							optionsStore as Readable<UserExposedOptions<Options>>,
+						],
+						([$input, $options]) => {
+							const [queryOptions, trpcOptions] = splitUserOptions($options);
+							const key = getArrayQueryKey(path, $input, queryType);
+							return {
+								...queryOptions,
+								enabled: queryOptions.enabled !== false && BROWSER,
+								queryKey: key,
+								queryFn: () => client.query(joinedPath, $input, trpcOptions),
+							} as Options;
 						},
-					});
+					);
+					return createQuery(options);
+				}
+				case 'mutation': {
+					type Options = inferStoreOrVal<CreateMutationOptions>;
+					const options = derived(
+						optionsStore as Readable<UserExposedOptions<Options>>,
+						($options) => {
+							const [queryOptions, trpcOptions] = splitUserOptions($options);
+							const key = getArrayQueryKey(path, undefined, queryType);
+							return {
+								...queryOptions,
+								mutationKey: key,
+								mutationFn: (variables) =>
+									client.mutation(joinedPath, variables, trpcOptions),
+							} as Options;
+						},
+					);
+					return createMutation(options);
+				}
+				case 'infiniteQuery': {
+					type Options = inferStoreOrVal<CreateInfiniteQueryOptions>;
+					const options = derived(
+						[
+							inputStore!,
+							optionsStore as Readable<UserExposedOptions<Options>>,
+						],
+						([$input, $options]) => {
+							const [queryOptions, trpcOptions] = splitUserOptions($options);
+							const key = getArrayQueryKey(path, $input, queryType);
+							return {
+								...queryOptions,
+								enabled: queryOptions.enabled !== false && BROWSER,
+								queryKey: key,
+								queryFn: (context) => {
+									const input = { ...$input, cursor: context.pageParam };
+									return client.query(joinedPath, input, trpcOptions);
+								},
+							} as Options;
+						},
+					);
+					return createInfiniteQuery(options);
+				}
 				default:
 					throw new TypeError(`trpc.${joinedPath}.${method} is not a function`);
 			}

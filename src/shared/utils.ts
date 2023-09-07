@@ -8,10 +8,10 @@ import {
 	QueryClient,
 	QueryFilters,
 	QueryFunction,
+	QueryKey,
 	RefetchOptions,
 	RefetchQueryFilters,
 	ResetOptions,
-	ResetQueryFilters,
 	SetDataOptions,
 	Updater,
 	useQueryClient,
@@ -38,9 +38,9 @@ export type DecorateProcedureUtils<TProcedure extends AnyProcedure> =
 	TProcedure extends AnyQueryProcedure
 		? {
 				utils: {
-					invalidate: <TPageData = unknown>(
+					invalidate: (
 						input: inferProcedureInput<TProcedure>,
-						filters?: InvalidateQueryFilters<TPageData>,
+						filters?: InvalidateQueryFilters,
 						options?: InvalidateOptions,
 					) => Promise<void>;
 					prefetch: (
@@ -61,9 +61,9 @@ export type DecorateProcedureUtils<TProcedure extends AnyProcedure> =
 							>
 						>,
 					) => Promise<inferTransformedProcedureOutput<TProcedure>>;
-					refetch: <TPageData = unknown>(
+					refetch: (
 						input: inferProcedureInput<TProcedure>,
-						filters?: RefetchQueryFilters<TPageData>,
+						filters?: RefetchQueryFilters,
 						options?: RefetchOptions,
 					) => Promise<void>;
 					cancel: (
@@ -71,9 +71,9 @@ export type DecorateProcedureUtils<TProcedure extends AnyProcedure> =
 						filters?: QueryFilters,
 						options?: CancelOptions,
 					) => Promise<void>;
-					reset: <TPageData = unknown>(
+					reset: (
 						input: inferProcedureInput<TProcedure>,
-						filters?: ResetQueryFilters<TPageData>,
+						filters?: QueryFilters,
 						options?: ResetOptions,
 					) => Promise<void>;
 					setData: (
@@ -139,9 +139,9 @@ export type DecorateRouterUtils = {
 			filters?: InvalidateQueryFilters,
 			options?: InvalidateOptions,
 		): Promise<void>;
-		refetch: <TPageData = unknown>(
+		refetch: (
 			input?: undefined,
-			filters?: RefetchQueryFilters<TPageData>,
+			filters?: RefetchQueryFilters,
 			options?: RefetchOptions,
 		) => Promise<void>;
 		cancel: (
@@ -149,9 +149,9 @@ export type DecorateRouterUtils = {
 			filters?: QueryFilters,
 			options?: CancelOptions,
 		) => Promise<void>;
-		reset: <TPageData = unknown>(
+		reset: (
 			input?: undefined,
-			filters?: ResetQueryFilters<TPageData>,
+			filters?: QueryFilters,
 			options?: ResetOptions,
 		) => Promise<void>;
 	};
@@ -193,6 +193,9 @@ export function callUtilMethod<TRouter extends AnyRouter>(
 	const queryType = queryTypes[method];
 	const queryKey = getArrayQueryKey(path, args[0], queryType);
 
+	const filters = (args[1] as QueryFilters | undefined) ?? {};
+	filters.queryKey = queryKey;
+
 	switch (method) {
 		case 'prefetch':
 		case 'fetch':
@@ -203,7 +206,7 @@ export function callUtilMethod<TRouter extends AnyRouter>(
 			const options = args[1] as UserExposedOptions<any> | undefined;
 			const [trpcOptions, tanstackQueryOptions] = splitUserOptions(options);
 
-			const queryFn: QueryFunction =
+			const queryFn: QueryFunction<unknown, QueryKey, unknown> =
 				queryType === 'query'
 					? () => trpc.query(joinedPath, args[0], trpcOptions)
 					: (context) => {
@@ -219,23 +222,19 @@ export function callUtilMethod<TRouter extends AnyRouter>(
 			});
 		}
 		case 'invalidate':
-			return client.invalidateQueries(queryKey, args[1], args[2]);
+			return client.invalidateQueries(filters, args[2]);
 		case 'refetch':
-			return client.refetchQueries(
-				getArrayQueryKey(path, args[0], 'query'),
-				args[1],
-				args[2],
-			);
+			return client.refetchQueries(filters, args[2]);
 		case 'cancel':
-			return client.cancelQueries(queryKey, args[1], args[2]);
+			return client.cancelQueries(filters, args[2]);
 		case 'reset':
-			return client.resetQueries(queryKey, args[1], args[2]);
+			return client.resetQueries(filters, args[2]);
 		case 'setData':
 		case 'setInfiniteData':
 			return client.setQueryData(queryKey, args[1], args[2]);
 		case 'getData':
 		case 'getInfiniteData':
-			return client.getQueryData(queryKey, args[1]);
+			return client.getQueryData(queryKey);
 		default:
 			throw new TypeError(`trpc.${path}.${method} is not a function`);
 	}
