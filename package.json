@@ -1,10 +1,9 @@
 {
 	"name": "trpc-svelte-query",
-	"version": "2.0.0-beta.1",
+	"version": "2.0.0-beta.2",
 	"description": "tRPC Svelte lib",
 	"author": "Ottomated",
 	"license": "MIT",
-	"main": "dist/index.js",
 	"module": "dist/index.mjs",
 	"typesVersions": {
 		"*": {
@@ -27,16 +26,8 @@
 		"dev": "tsup --watch"
 	},
 	"exports": {
-		".": {
-			"import": "./dist/index.mjs",
-			"require": "./dist/index.js",
-			"default": "./dist/index.js"
-		},
-		"./server": {
-			"import": "./dist/server/index.mjs",
-			"require": "./dist/server/index.js",
-			"default": "./dist/server/index.js"
-		}
+		".": "./dist/index.mjs",
+		"./server": "./dist/server/index.mjs"
 	},
 	"files": [
 		"dist",
