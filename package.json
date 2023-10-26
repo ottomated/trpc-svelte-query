@@ -1,6 +1,6 @@
 {
 	"name": "trpc-svelte-query",
-	"version": "2.0.0",
+	"version": "2.0.1",
 	"description": "tRPC Svelte lib",
 	"author": "Ottomated",
 	"license": "MIT",
@@ -8,10 +8,10 @@
 	"typesVersions": {
 		"*": {
 			"*": [
-				"dist/index.d.ts"
+				"dist/index.d.mts"
 			],
 			"server": [
-				"dist/server/index.d.ts"
+				"dist/server/index.d.mts"
 			]
 		}
 	},
