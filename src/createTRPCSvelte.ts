@@ -8,6 +8,7 @@ import {
 	QueryClient,
 	QueryClientConfig,
 	StoreOrVal,
+	UndefinedInitialDataOptions,
 	createInfiniteQuery,
 	createMutation,
 	createQuery,
@@ -59,10 +60,8 @@ type inferStoreOrVal<TStore> = TStore extends StoreOrVal<infer U> ? U : TStore;
 /**
  * @internal
  */
-export type UserExposedOptions<TOptions> = UserExposedTanstackQueryOptions<
-	inferStoreOrVal<TOptions>
-> &
-	TRPCRequestOptions;
+export type UserExposedOptions<TOptions> =
+	UserExposedTanstackQueryOptions<TOptions> & TRPCRequestOptions;
 
 type DecorateProcedure<TProcedure extends AnyProcedure> =
 	TProcedure extends AnyQueryProcedure
@@ -229,7 +228,7 @@ function createSvelteInternalProxy<TRouter extends AnyRouter>(
 
 			switch (method) {
 				case 'query': {
-					type Options = inferStoreOrVal<CreateQueryOptions>;
+					type Options = inferStoreOrVal<UndefinedInitialDataOptions>;
 					const options = derived(
 						[
 							inputStore!,
