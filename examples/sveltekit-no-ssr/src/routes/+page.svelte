@@ -47,7 +47,7 @@
 
 <input bind:value={newTodo} placeholder="New todo" />
 <button
-	disabled={$addTodo.isLoading}
+	disabled={$addTodo.isPending}
 	on:click={() => {
 		$addTodo.mutate({ data: newTodo });
 		newTodo = '';

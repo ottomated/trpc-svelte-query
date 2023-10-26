@@ -1,11 +1,14 @@
 import { TRPCRequestOptions } from '@trpc/client';
-import type { TodoTypeName, UserExposedOptions } from '../createTRPCSvelte';
+import type {
+	UserExposedOptions,
+	UserExposedTanstackQueryOptions,
+} from '../createTRPCSvelte';
 
 export function splitUserOptions<TOptions = unknown>(
 	options: UserExposedOptions<TOptions> | undefined,
 ): [
-	trpcOptions: TRPCRequestOptions | undefined,
-	tanstackQueryOptions: TodoTypeName<TOptions> | undefined,
+	tanstackQueryOptions: UserExposedTanstackQueryOptions<TOptions>,
+	trpcOptions: TRPCRequestOptions,
 ] {
 	if (options === undefined) {
 		// Both options are optional, so we can return an empty array
@@ -19,5 +22,5 @@ export function splitUserOptions<TOptions = unknown>(
 	delete options.context;
 	delete options.signal;
 
-	return [trpcOptions, options];
+	return [options, trpcOptions];
 }
