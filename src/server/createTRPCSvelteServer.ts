@@ -99,7 +99,6 @@ function createInternalProxy<TRouter extends AnyRouter>(
 		return createRecursiveProxy(({ path, args }) => {
 			path.unshift(firstPath);
 
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			const method = path.pop()!;
 			const fullPath = path.join('.');
 

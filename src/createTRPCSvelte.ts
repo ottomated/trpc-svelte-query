@@ -105,11 +105,13 @@ type DecorateProcedure<TProcedure extends AnyProcedure> =
 				mutation: <TContext = unknown>(
 					opts?: StoreOrVal<
 						UserExposedOptions<
-							CreateMutationOptions<
-								inferTransformedProcedureOutput<TProcedure>,
-								TRPCClientErrorLike<TProcedure>,
-								inferProcedureInput<TProcedure>,
-								TContext
+							inferStoreOrVal<
+								CreateMutationOptions<
+									inferTransformedProcedureOutput<TProcedure>,
+									TRPCClientErrorLike<TProcedure>,
+									inferProcedureInput<TProcedure>,
+									TContext
+								>
 							>
 						>
 					>,
@@ -187,7 +189,6 @@ function createSvelteInternalProxy<TRouter extends AnyRouter>(
 		return createRecursiveProxy(({ path, args: unknownArgs }) => {
 			path.unshift(firstPath);
 
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			const method = path.pop()! as ClientMethod;
 			const joinedPath = path.join('.');
 
