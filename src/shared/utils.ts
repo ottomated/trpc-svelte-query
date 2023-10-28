@@ -193,8 +193,11 @@ export function callUtilMethod<TRouter extends AnyRouter>(
 	const queryType = queryTypes[method];
 	const queryKey = getArrayQueryKey(path, args[0], queryType);
 
-	const filters = (args[1] as QueryFilters | undefined) ?? {};
-	filters.queryKey = queryKey;
+	const getFilters = () => {
+		const filters = (args[1] as QueryFilters | undefined) ?? {};
+		filters.queryKey = queryKey;
+		return filters;
+	};
 
 	switch (method) {
 		case 'prefetch':
@@ -222,13 +225,13 @@ export function callUtilMethod<TRouter extends AnyRouter>(
 			});
 		}
 		case 'invalidate':
-			return client.invalidateQueries(filters, args[2]);
+			return client.invalidateQueries(getFilters(), args[2]);
 		case 'refetch':
-			return client.refetchQueries(filters, args[2]);
+			return client.refetchQueries(getFilters(), args[2]);
 		case 'cancel':
-			return client.cancelQueries(filters, args[2]);
+			return client.cancelQueries(getFilters(), args[2]);
 		case 'reset':
-			return client.resetQueries(filters, args[2]);
+			return client.resetQueries(getFilters(), args[2]);
 		case 'setData':
 		case 'setInfiniteData':
 			return client.setQueryData(queryKey, args[1], args[2]);
