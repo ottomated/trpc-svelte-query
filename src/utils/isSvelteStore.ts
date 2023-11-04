@@ -4,5 +4,9 @@ import { Readable } from 'svelte/store';
 export function isSvelteStore<TStore extends object>(
 	obj: StoreOrVal<TStore>,
 ): obj is Readable<TStore> {
-	return 'subscribe' in obj && typeof obj.subscribe === 'function';
+	return (
+		typeof obj === 'object' &&
+		'subscribe' in obj &&
+		typeof obj.subscribe === 'function'
+	);
 }
