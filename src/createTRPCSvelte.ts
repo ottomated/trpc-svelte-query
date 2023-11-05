@@ -66,23 +66,23 @@ export type UserExposedOptions<TOptions> =
 type DecorateProcedure<TProcedure extends AnyProcedure> =
 	TProcedure extends AnyQueryProcedure
 		? {
-				query: (
+				query: <TData = inferTransformedProcedureOutput<TProcedure>>(
 					input: StoreOrVal<inferProcedureInput<TProcedure>>,
 					options?: StoreOrVal<
 						UserExposedOptions<
 							CreateQueryOptions<
 								inferTransformedProcedureOutput<TProcedure>,
-								TRPCClientErrorLike<TProcedure>
+								TRPCClientErrorLike<TProcedure>,
+								TData
 							>
 						>
 					>,
-				) => CreateQueryResult<
-					inferTransformedProcedureOutput<TProcedure>,
-					TRPCClientErrorLike<TProcedure>
-				>;
+				) => CreateQueryResult<TData, TRPCClientErrorLike<TProcedure>>;
 		  } & (inferProcedureInput<TProcedure> extends { cursor?: any }
 				? {
-						infiniteQuery: (
+						infiniteQuery: <
+							TData = inferTransformedProcedureOutput<TProcedure>,
+						>(
 							input: StoreOrVal<
 								Omit<inferProcedureInput<TProcedure>, 'cursor'>
 							>,
@@ -90,12 +90,13 @@ type DecorateProcedure<TProcedure extends AnyProcedure> =
 								UserExposedOptions<
 									CreateInfiniteQueryOptions<
 										inferTransformedProcedureOutput<TProcedure>,
-										TRPCClientErrorLike<TProcedure>
+										TRPCClientErrorLike<TProcedure>,
+										TData
 									>
 								>
 							>,
 						) => CreateInfiniteQueryResult<
-							inferTransformedProcedureOutput<TProcedure>,
+							TData,
 							TRPCClientErrorLike<TProcedure>
 						>;
 				  }
