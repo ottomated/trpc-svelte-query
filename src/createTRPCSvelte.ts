@@ -5,6 +5,7 @@ import {
 	CreateMutationResult,
 	CreateQueryOptions,
 	CreateQueryResult,
+	InfiniteData,
 	QueryClient,
 	QueryClientConfig,
 	StoreOrVal,
@@ -36,7 +37,7 @@ import {
 } from '@trpc/server/shared';
 import { BROWSER } from 'esm-env';
 import { Readable, derived, readable } from 'svelte/store';
-import { getArrayQueryKey } from './internals/getArrayQueryKey';
+import { QueryKey, getArrayQueryKey } from './internals/getArrayQueryKey';
 import type { TRPCSSRData } from './server/utils';
 import {
 	DecorateProcedureUtils,
@@ -73,15 +74,19 @@ type DecorateProcedure<TProcedure extends AnyProcedure> =
 							CreateQueryOptions<
 								inferTransformedProcedureOutput<TProcedure>,
 								TRPCClientErrorLike<TProcedure>,
-								TData
+								TData,
+								QueryKey
 							>
 						>
 					>,
 				) => CreateQueryResult<TData, TRPCClientErrorLike<TProcedure>>;
-		  } & (inferProcedureInput<TProcedure> extends { cursor?: any }
+		  } & (inferProcedureInput<TProcedure> extends { cursor?: infer TCursor }
 				? {
 						infiniteQuery: <
-							TData = inferTransformedProcedureOutput<TProcedure>,
+							TData = InfiniteData<
+								inferTransformedProcedureOutput<TProcedure>,
+								TCursor
+							>,
 						>(
 							input: StoreOrVal<
 								Omit<inferProcedureInput<TProcedure>, 'cursor'>
@@ -91,7 +96,10 @@ type DecorateProcedure<TProcedure extends AnyProcedure> =
 									CreateInfiniteQueryOptions<
 										inferTransformedProcedureOutput<TProcedure>,
 										TRPCClientErrorLike<TProcedure>,
-										TData
+										TData,
+										inferTransformedProcedureOutput<TProcedure>,
+										QueryKey,
+										TCursor
 									>
 								>
 							>,
