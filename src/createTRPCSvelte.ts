@@ -5,6 +5,7 @@ import {
 	CreateMutationResult,
 	CreateQueryOptions,
 	CreateQueryResult,
+	InfiniteData,
 	QueryClient,
 	QueryClientConfig,
 	StoreOrVal,
@@ -36,7 +37,7 @@ import {
 } from '@trpc/server/shared';
 import { BROWSER } from 'esm-env';
 import { Readable, derived, readable } from 'svelte/store';
-import { getArrayQueryKey } from './internals/getArrayQueryKey';
+import { QueryKey, getArrayQueryKey } from './internals/getArrayQueryKey';
 import type { TRPCSSRData } from './server/utils';
 import {
 	DecorateProcedureUtils,
@@ -66,23 +67,27 @@ export type UserExposedOptions<TOptions> =
 type DecorateProcedure<TProcedure extends AnyProcedure> =
 	TProcedure extends AnyQueryProcedure
 		? {
-				query: (
+				query: <TData = inferTransformedProcedureOutput<TProcedure>>(
 					input: StoreOrVal<inferProcedureInput<TProcedure>>,
 					options?: StoreOrVal<
 						UserExposedOptions<
 							CreateQueryOptions<
 								inferTransformedProcedureOutput<TProcedure>,
-								TRPCClientErrorLike<TProcedure>
+								TRPCClientErrorLike<TProcedure>,
+								TData,
+								QueryKey
 							>
 						>
 					>,
-				) => CreateQueryResult<
-					inferTransformedProcedureOutput<TProcedure>,
-					TRPCClientErrorLike<TProcedure>
-				>;
-		  } & (inferProcedureInput<TProcedure> extends { cursor?: any }
+				) => CreateQueryResult<TData, TRPCClientErrorLike<TProcedure>>;
+		  } & (inferProcedureInput<TProcedure> extends { cursor?: infer TCursor }
 				? {
-						infiniteQuery: (
+						infiniteQuery: <
+							TData = InfiniteData<
+								inferTransformedProcedureOutput<TProcedure>,
+								TCursor
+							>,
+						>(
 							input: StoreOrVal<
 								Omit<inferProcedureInput<TProcedure>, 'cursor'>
 							>,
@@ -90,12 +95,16 @@ type DecorateProcedure<TProcedure extends AnyProcedure> =
 								UserExposedOptions<
 									CreateInfiniteQueryOptions<
 										inferTransformedProcedureOutput<TProcedure>,
-										TRPCClientErrorLike<TProcedure>
+										TRPCClientErrorLike<TProcedure>,
+										TData,
+										inferTransformedProcedureOutput<TProcedure>,
+										QueryKey,
+										TCursor
 									>
 								>
 							>,
 						) => CreateInfiniteQueryResult<
-							inferTransformedProcedureOutput<TProcedure>,
+							TData,
 							TRPCClientErrorLike<TProcedure>
 						>;
 				  }
