@@ -80,7 +80,7 @@ type DecorateProcedure<TProcedure extends AnyProcedure> =
 						>
 					>,
 				) => CreateQueryResult<TData, TRPCClientErrorLike<TProcedure>>;
-		  } & (inferProcedureInput<TProcedure> extends { cursor?: infer TCursor }
+			} & (inferProcedureInput<TProcedure> extends { cursor?: infer TCursor }
 				? {
 						infiniteQuery: <
 							TData = InfiniteData<
@@ -107,39 +107,39 @@ type DecorateProcedure<TProcedure extends AnyProcedure> =
 							TData,
 							TRPCClientErrorLike<TProcedure>
 						>;
-				  }
+					}
 				: object)
 		: TProcedure extends AnyMutationProcedure
-		? {
-				mutation: <TContext = unknown>(
-					opts?: StoreOrVal<
-						UserExposedOptions<
-							inferStoreOrVal<
-								CreateMutationOptions<
-									inferTransformedProcedureOutput<TProcedure>,
-									TRPCClientErrorLike<TProcedure>,
-									inferProcedureInput<TProcedure>,
-									TContext
+			? {
+					mutation: <TContext = unknown>(
+						opts?: StoreOrVal<
+							UserExposedOptions<
+								inferStoreOrVal<
+									CreateMutationOptions<
+										inferTransformedProcedureOutput<TProcedure>,
+										TRPCClientErrorLike<TProcedure>,
+										inferProcedureInput<TProcedure>,
+										TContext
+									>
 								>
 							>
-						>
-					>,
-				) => CreateMutationResult<
-					inferTransformedProcedureOutput<TProcedure>,
-					TRPCClientErrorLike<TProcedure>,
-					inferProcedureInput<TProcedure>,
-					TContext
-				>;
-		  }
-		: never;
+						>,
+					) => CreateMutationResult<
+						inferTransformedProcedureOutput<TProcedure>,
+						TRPCClientErrorLike<TProcedure>,
+						inferProcedureInput<TProcedure>,
+						TContext
+					>;
+				}
+			: never;
 
 type DecoratedProcedureRecord<TProcedures extends ProcedureRouterRecord> = {
 	[TKey in keyof TProcedures]: TProcedures[TKey] extends AnyRouter
 		? DecoratedProcedureRecord<TProcedures[TKey]['_def']['record']>
 		: TProcedures[TKey] extends AnyProcedure
-		? DecorateProcedure<TProcedures[TKey]> &
-				DecorateProcedureUtils<TProcedures[TKey]>
-		: never;
+			? DecorateProcedure<TProcedures[TKey]> &
+					DecorateProcedureUtils<TProcedures[TKey]>
+			: never;
 } & DecorateRouterUtils;
 
 /**
@@ -229,10 +229,10 @@ function createSvelteInternalProxy<TRouter extends AnyRouter>(
 				method === 'mutation'
 					? undefined
 					: // If it's a store, use it
-					args[0] && isSvelteStore(args[0])
-					? args[0]
-					: // wrap the input in a store
-					  readable(args[0]);
+						args[0] && isSvelteStore(args[0])
+						? args[0]
+						: // wrap the input in a store
+							readable(args[0]);
 
 			// Create the query key - input is undefined for mutations
 

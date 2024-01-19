@@ -1,6 +1,6 @@
 {
 	"name": "@examples/sveltekit-no-ssr",
-	"version": "10.9.0",
+	"version": "10.10.0",
 	"private": true,
 	"scripts": {
 		"dev": "vite dev",
@@ -10,21 +10,22 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-auto": "^2.1.1",
-		"@sveltejs/kit": "^1.27.5",
-		"svelte": "^4.2.3",
-		"svelte-check": "^3.6.0",
+		"@sveltejs/adapter-auto": "^3.1.0",
+		"@sveltejs/kit": "^2.4.0",
+		"@sveltejs/vite-plugin-svelte": "^3.0.1",
+		"svelte": "^4.2.9",
+		"svelte-check": "^3.6.3",
 		"tslib": "^2.6.2",
-		"typescript": "^5.2.2",
-		"vite": "^4.5.0"
+		"typescript": "^5.3.3",
+		"vite": "^5.0.11"
 	},
 	"type": "module",
 	"dependencies": {
-		"@tanstack/svelte-query": "5.8.2",
-		"@trpc/client": "^10.43.3",
-		"@trpc/server": "^10.43.3",
+		"@tanstack/svelte-query": "5.17.15",
+		"@trpc/client": "^10.45.0",
+		"@trpc/server": "^10.45.0",
 		"devalue": "^4.3.2",
-		"trpc-svelte-query": "../..",
+		"trpc-svelte-query": "link:../..",
 		"zod": "^3.22.4"
 	}
 }

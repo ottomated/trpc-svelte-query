@@ -17,13 +17,13 @@ export type SvelteCreateContextOption<TRouter extends AnyRouter> =
 				 * @link https://trpc.io/docs/context
 				 **/
 				createContext?: SvelteCreateContextFn<TRouter>;
-		  }
+			}
 		: {
 				/**
 				 * @link https://trpc.io/docs/context
 				 **/
 				createContext: SvelteCreateContextFn<TRouter>;
-		  };
+			};
 
 export async function svelteRequestHandler<TRouter extends AnyRouter>(
 	opts: CreateTRPCSvelteServerOptions<TRouter>,
