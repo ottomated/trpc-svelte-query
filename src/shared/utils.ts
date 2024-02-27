@@ -124,9 +124,9 @@ export type DecorateProcedureUtils<TProcedure extends AnyProcedure> =
 								>,
 								options?: SetDataOptions,
 							): inferTransformedProcedureOutput<TProcedure> | undefined;
-					  }
+						}
 					: object);
-		  }
+			}
 		: object;
 
 /**
@@ -215,7 +215,7 @@ export function callUtilMethod<TRouter extends AnyRouter>(
 					: (context) => {
 							const input = { ...args[0], cursor: context.pageParam };
 							return trpc.query(joinedPath, input, trpcOptions);
-					  };
+						};
 
 			// tanstack query methods look like fetchQuery, prefetchInfiniteQuery, etc., so we append "Query"
 			return (client as any)[method + 'Query']({
