@@ -1,4 +1,4 @@
-import { RequestEvent, RequestHandler, error } from '@sveltejs/kit';
+import { type RequestEvent, type RequestHandler, error } from '@sveltejs/kit';
 import {
 	AnyProcedure,
 	AnyQueryProcedure,
@@ -144,7 +144,7 @@ function createInternalProxy<TRouter extends AnyRouter>(
 						const httpCode = getHTTPStatusCodeFromError(err);
 						if (httpCode === 500) throw err;
 
-						throw error(httpCode, err.message);
+						error(httpCode, { message: err.message });
 					} else {
 						throw err;
 					}

@@ -10,19 +10,20 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-auto": "^2.1.1",
-		"@sveltejs/kit": "^1.27.5",
-		"svelte": "^4.2.3",
-		"svelte-check": "^3.6.0",
+		"@sveltejs/adapter-auto": "^3.1.1",
+		"@sveltejs/kit": "^2.5.2",
+		"@sveltejs/vite-plugin-svelte": "^3.0.2",
+		"svelte": "^4.2.12",
+		"svelte-check": "^3.6.5",
 		"tslib": "^2.6.2",
-		"typescript": "^5.2.2",
-		"vite": "^4.5.0"
+		"typescript": "^5.3.3",
+		"vite": "^5.1.4"
 	},
 	"type": "module",
 	"dependencies": {
-		"@tanstack/svelte-query": "5.8.2",
-		"@trpc/client": "^10.43.3",
-		"@trpc/server": "^10.43.3",
+		"@tanstack/svelte-query": "5.24.1",
+		"@trpc/client": "^10.45.1",
+		"@trpc/server": "^10.45.1",
 		"devalue": "^4.3.2",
 		"trpc-svelte-query": "link:../..",
 		"zod": "^3.22.4"

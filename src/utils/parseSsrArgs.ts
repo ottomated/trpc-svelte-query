@@ -1,4 +1,4 @@
-import { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from '@sveltejs/kit';
 
 /**
  * Args: [input, router] if input,

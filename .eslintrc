@@ -14,6 +14,12 @@
 		"project": "./tsconfig.json" // Allows for the use of rules which require parserServices to be generated
 	},
 	"rules": {
+		"rules": {
+			"no-restricted-imports": [
+				"error",
+				"trpc-svelte-query"
+			]
+		},
 		"prettier/prettier": "warn",
 		"no-console": "error",
 		"@typescript-eslint/no-misused-promises": "off",

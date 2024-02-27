@@ -1,4 +1,4 @@
-import { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from '@sveltejs/kit';
 import { AnyRouter, inferRouterContext } from '@trpc/server';
 import { HTTPRequest, resolveHTTPResponse } from '@trpc/server/http';
 import { CreateTRPCSvelteServerOptions } from './createTRPCSvelteServer';
