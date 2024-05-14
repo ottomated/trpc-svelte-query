@@ -154,7 +154,7 @@ Update your root layout to hydrate that SSR data.
 Add a `+page.server.ts` file to preload specific queries.
 
 ```ts
-import { trpc } from '$lib/server/server';
+import { trpcServer } from '$lib/server/server';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
