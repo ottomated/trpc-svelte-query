@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { trpc } from '$lib/trpc';
 
-	const todo = trpc.todos.get.query({ id: $page.params.id });
+	const todo = trpc.todos.get.query({ id: page.params.id });
 </script>
 
 <h1>Todo {$todo.status}</h1>

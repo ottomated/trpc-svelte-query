@@ -1,6 +1,6 @@
-import { createTRPCSvelteServer } from "trpc-svelte-query/server";
-import { appRouter } from "./routes/_app";
-import { createContext } from "./context";
+import { createTRPCSvelteServer } from 'trpc-svelte-query/server';
+import { createContext } from './context';
+import { appRouter } from './routes/_app';
 
 export const trpcServer = createTRPCSvelteServer({
 	endpoint: '/api/trpc',

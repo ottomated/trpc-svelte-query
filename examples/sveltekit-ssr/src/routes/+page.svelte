@@ -3,7 +3,7 @@
 
 	const todos = trpc.todos.list.query();
 
-	let newTodo = '';
+	let newTodo = $state('');
 
 	const invalidator = {
 		onSuccess: () => {
@@ -23,7 +23,7 @@
 		<p data-id={todo.id}>
 			<input
 				value={todo.data}
-				on:blur={(ev) => {
+				onblur={(ev) => {
 					$updateTodo.mutate({
 						id: todo.id,
 						data: ev.currentTarget.value,
@@ -31,7 +31,7 @@
 				}}
 			/>
 			<button
-				on:click={() => {
+				onclick={() => {
 					$deleteTodo.mutate({ id: todo.id });
 				}}
 			>
@@ -48,7 +48,7 @@
 <input bind:value={newTodo} placeholder="New todo" />
 <button
 	disabled={$addTodo.isPending}
-	on:click={() => {
+	onclick={() => {
 		$addTodo.mutate({ data: newTodo });
 		newTodo = '';
 	}}

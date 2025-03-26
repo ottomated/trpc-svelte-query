@@ -1,11 +1,7 @@
 {
 	"compilerOptions": {
 		"module": "esnext",
-		"lib": [
-			"esnext",
-			"dom",
-			"dom.iterable"
-		],
+		"lib": ["esnext", "dom", "dom.iterable"],
 		"target": "es2020",
 		"declaration": true,
 		"emitDeclarationOnly": true,
@@ -18,10 +14,9 @@
 		"noFallthroughCasesInSwitch": true,
 		"noUncheckedIndexedAccess": true,
 		"moduleResolution": "node",
+		"verbatimModuleSyntax": true,
 		"jsx": "react",
 		"esModuleInterop": true
 	},
-	"include": [
-		"src"
-	]
+	"include": ["src"]
 }

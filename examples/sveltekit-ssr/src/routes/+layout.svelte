@@ -1,13 +1,9 @@
 <script lang="ts">
 	import { trpc } from '$lib/trpc';
-	import { QueryClientProvider } from '@tanstack/svelte-query';
-	import type { LayoutData } from './$types';
 
-	export let data: LayoutData;
+	const { data, children } = $props();
 
-	$: queryClient = trpc.hydrateFromServer(data.trpc);
+	trpc.hydrateFromServer(() => data.trpc);
 </script>
 
-<QueryClientProvider client={queryClient}>
-	<slot />
-</QueryClientProvider>
+{@render children?.()}

@@ -1,80 +1,108 @@
-import { type RequestEvent, type RequestHandler, error } from '@sveltejs/kit';
+import { getRequestEvent } from '$app/server';
 import {
-	AnyProcedure,
-	AnyQueryProcedure,
-	AnyRouter,
-	ProcedureRouterRecord,
-	ProtectedIntersection,
+	type RequestEvent,
+	type RequestHandler,
+	type ServerLoadEvent,
+	error,
+} from '@sveltejs/kit';
+import { createTRPCFlatProxy, createTRPCRecursiveProxy } from '@trpc/server';
+import type {
+	AnyTRPCProcedure,
+	AnyTRPCQueryProcedure,
+	AnyTRPCRootTypes,
+	AnyTRPCRouter,
+	TRPCRouterRecord,
 	inferProcedureInput,
+	inferTransformedProcedureOutput,
 } from '@trpc/server';
 import {
-	HTTPBaseHandlerOptions,
+	type HTTPBaseHandlerOptions,
 	getHTTPStatusCodeFromError,
 } from '@trpc/server/http';
-import {
-	createFlatProxy,
-	createRecursiveProxy,
-	inferTransformedProcedureOutput,
-} from '@trpc/server/shared';
+import type { ProtectedIntersection } from '@trpc/server/unstable-core-do-not-import';
 import { getArrayQueryKey } from '../internals/getArrayQueryKey';
-import { parseSSRArgs } from '../utils/parseSsrArgs';
-import { SvelteCreateContextOption, svelteRequestHandler } from './handler';
 import {
-	RequestEventLocals,
-	TRPCSSRData,
-	getSSRData,
-	localsSymbol,
+	type SvelteCreateContextOption,
+	svelteRequestHandler,
+} from './handler';
+import {
+	type RequestEventLocals,
+	type TRPCSSRData,
+	TRPC_SSR_DATA,
+	hydrateToClient,
 } from './utils';
 
-type DecorateProcedure<TProcedure extends AnyProcedure> =
-	TProcedure extends AnyQueryProcedure
-		? (inferProcedureInput<TProcedure> extends void
-				? {
-						ssr: (
-							event: RequestEvent,
-						) => Promise<
-							inferTransformedProcedureOutput<TProcedure> | undefined
-						>;
-					}
-				: {
-						ssr: (
-							input: inferProcedureInput<TProcedure>,
-							event: RequestEvent,
-						) => Promise<
-							inferTransformedProcedureOutput<TProcedure> | undefined
-						>;
-					}) &
-				(inferProcedureInput<TProcedure> extends { cursor?: any }
-					? {
-							ssrInfinite: (
-								input: inferProcedureInput<TProcedure>,
-								event: RequestEvent,
-							) => Promise<
-								inferTransformedProcedureOutput<TProcedure> | undefined
-							>;
-						}
-					: object)
-		: never;
+type DecorateProcedure<TDef extends { input: any; output: any }> =
+	(TDef['input'] extends void
+		? {
+				/**
+				 * Preload the data for use on the page. You **don't** need
+				 * to use the output of this function. If the TRPC procedure
+				 * throws an error, this will throw a SvelteKit-friendly error.
+				 */
+				ssr: () => Promise<TDef['output'] | undefined>;
+			}
+		: {
+				/**
+				 * Preload the data for use on the page. You **don't** need
+				 * to use the output of this function. If the TRPC procedure
+				 * throws an error, this will throw a SvelteKit-friendly error.
+				 */
+				ssr: (input: TDef['input']) => Promise<TDef['output'] | undefined>;
+			}) &
+		(TDef['input'] extends { cursor?: any }
+			? {
+					/**
+					 * Preload the data for use on the page. You **don't** need
+					 * to use the output of this function. If the TRPC procedure
+					 * throws an error, this will throw a SvelteKit-friendly error.
+					 */
+					ssrInfinite: (
+						input: TDef['input'],
+					) => Promise<TDef['output'] | undefined>;
+				}
+			: object);
 
-type DecoratedProcedureRecord<TProcedures extends ProcedureRouterRecord> = {
-	[TKey in keyof TProcedures]: TProcedures[TKey] extends AnyRouter
-		? DecoratedProcedureRecord<TProcedures[TKey]['_def']['record']>
-		: TProcedures[TKey] extends AnyProcedure
-			? DecorateProcedure<TProcedures[TKey]>
-			: never;
+type DecorateRouterRecord<
+	TRoot extends AnyTRPCRootTypes,
+	TRecord extends TRPCRouterRecord,
+> = {
+	// filter out mutations
+	[TKey in keyof TRecord as TRecord[TKey] extends infer $Value
+		? $Value extends AnyTRPCProcedure
+			? $Value['_def']['type'] extends 'query'
+				? TKey
+				: never
+			: TKey
+		: never]: TRecord[TKey] extends infer $Value
+		? $Value extends AnyTRPCProcedure
+			? $Value['_def']['type'] extends 'query'
+				? DecorateProcedure<{
+						input: inferProcedureInput<$Value>;
+						output: inferTransformedProcedureOutput<TRoot, $Value>;
+					}>
+				: never
+			: $Value extends TRPCRouterRecord
+				? DecorateRouterRecord<TRoot, $Value>
+				: never
+		: never;
 };
 
-type TRPCSvelteServerBase<_TRouter extends AnyRouter> = {
-	hydrateToClient: (event: RequestEvent) => Promise<TRPCSSRData>;
+type TRPCSvelteServerBase = {
+	hydrateToClient: (event: ServerLoadEvent) => TRPCSSRData;
 	handler: RequestHandler;
 };
 
-export type TRPCSvelteServer<TRouter extends AnyRouter> = ProtectedIntersection<
-	TRPCSvelteServerBase<TRouter>,
-	DecoratedProcedureRecord<TRouter['_def']['record']>
->;
+export type TRPCSvelteServer<TRouter extends AnyTRPCRouter> =
+	ProtectedIntersection<
+		TRPCSvelteServerBase,
+		DecorateRouterRecord<
+			TRouter['_def']['_config']['$types'],
+			TRouter['_def']['record']
+		>
+	>;
 
-export type CreateTRPCSvelteServerOptions<TRouter extends AnyRouter> =
+export type CreateTRPCSvelteServerOptions<TRouter extends AnyTRPCRouter> =
 	HTTPBaseHandlerOptions<TRouter, Request> &
 		SvelteCreateContextOption<TRouter> & {
 			endpoint: string;
@@ -85,19 +113,19 @@ const clientMethods = {
 	ssrInfinite: 'infinite',
 } as const;
 
-function createInternalProxy<TRouter extends AnyRouter>(
+export function createTRPCSvelteServer<TRouter extends AnyTRPCRouter>(
 	options: CreateTRPCSvelteServerOptions<TRouter>,
-) {
-	return createFlatProxy<TRPCSvelteServer<TRouter>>((firstPath) => {
+): TRPCSvelteServer<TRouter> {
+	return createTRPCFlatProxy<TRPCSvelteServer<TRouter>>((firstPath) => {
 		switch (firstPath) {
 			case 'handler':
 				return (event: RequestEvent) => svelteRequestHandler(options, event);
 			case 'hydrateToClient':
-				return getSSRData;
+				return hydrateToClient;
 		}
 
-		return createRecursiveProxy(({ path, args }) => {
-			path.unshift(firstPath);
+		return createTRPCRecursiveProxy(({ path: rawPath, args }) => {
+			const path = [firstPath as string, ...rawPath];
 
 			const method = path.pop()!;
 			const fullPath = path.join('.');
@@ -105,37 +133,43 @@ function createInternalProxy<TRouter extends AnyRouter>(
 			const procedureType = clientMethods[method as keyof typeof clientMethods];
 
 			if (!procedureType) {
-				throw new TypeError(`trpc.${fullPath}.${method} is not a function`);
+				throw new TypeError(
+					`trpc.${fullPath}.${String(method)} is not a function`,
+				);
 			}
 
 			const procedure = options.router._def.procedures[
 				fullPath
-			] as AnyQueryProcedure;
+			] as AnyTRPCQueryProcedure;
 
-			const [rawInput, event] = parseSSRArgs(args);
+			if (!procedure) {
+				throw new TypeError(`trpc.${fullPath} is not a function`);
+			}
+
+			const event = getRequestEvent();
 
 			const createContext = async () => {
 				return options.createContext?.(event);
 			};
 
-			const key = getArrayQueryKey(path, rawInput, procedureType);
-
 			return createContext()
 				.then((ctx) =>
 					procedure({
 						ctx,
-						rawInput,
+						getRawInput: async () => args[0],
 						path: fullPath,
 						type: 'query',
+						signal: undefined,
 					}),
 				)
 				.then(async (result) => {
 					const locals = event.locals as RequestEventLocals;
 
-					if (!locals[localsSymbol]) {
-						locals[localsSymbol] = new Map();
+					if (!(TRPC_SSR_DATA in locals)) {
+						locals[TRPC_SSR_DATA] = new Map();
 					}
-					locals[localsSymbol].set(key, result);
+					const key = getArrayQueryKey(path, args[0], procedureType);
+					locals[TRPC_SSR_DATA]!.set(key, result);
 
 					return result;
 				})
@@ -151,11 +185,4 @@ function createInternalProxy<TRouter extends AnyRouter>(
 				});
 		});
 	});
-}
-
-export function createTRPCSvelteServer<TRouter extends AnyRouter>(
-	options: CreateTRPCSvelteServerOptions<TRouter>,
-): TRPCSvelteServer<TRouter> {
-	const proxy = createInternalProxy(options);
-	return proxy;
 }

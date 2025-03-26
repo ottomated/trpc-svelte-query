@@ -1,8 +1,8 @@
-import { TRPCRequestOptions } from '@trpc/client';
+import type { TRPCRequestOptions } from '@trpc/client';
 import type {
 	UserExposedOptions,
 	UserExposedTanstackQueryOptions,
-} from '../createTRPCSvelte';
+} from '../createTRPCSvelte.svelte';
 
 export function splitUserOptions<TOptions = unknown>(
 	options: UserExposedOptions<TOptions> | undefined,

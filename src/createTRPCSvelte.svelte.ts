@@ -1,4 +1,5 @@
-import {
+import { browser } from '$app/environment';
+import type {
 	CreateInfiniteQueryOptions,
 	CreateInfiniteQueryResult,
 	CreateMutationOptions,
@@ -6,44 +7,48 @@ import {
 	CreateQueryOptions,
 	CreateQueryResult,
 	InfiniteData,
-	QueryClient,
 	QueryClientConfig,
 	StoreOrVal,
 	UndefinedInitialDataOptions,
+} from '@tanstack/svelte-query';
+import {
+	QueryClient,
 	createInfiniteQuery,
 	createMutation,
 	createQuery,
 } from '@tanstack/svelte-query';
 import {
-	CreateTRPCClientOptions,
-	TRPCClientErrorLike,
-	TRPCRequestOptions,
+	type CreateTRPCClientOptions,
+	type TRPCClientErrorLike,
+	type TRPCRequestOptions,
 	TRPCUntypedClient,
 	createTRPCUntypedClient,
 } from '@trpc/client';
 import type {
-	AnyMutationProcedure,
-	AnyProcedure,
-	AnyQueryProcedure,
-	AnyRouter,
-	ProcedureRouterRecord,
-	ProtectedIntersection,
+	AnyTRPCProcedure,
+	AnyTRPCRootTypes,
+	AnyTRPCRouter,
+	TRPCProcedureType,
+	TRPCRouterRecord,
 	inferProcedureInput,
-} from '@trpc/server';
-import {
-	createFlatProxy,
-	createRecursiveProxy,
 	inferTransformedProcedureOutput,
-} from '@trpc/server/shared';
-import { BROWSER } from 'esm-env';
-import { Readable, derived, readable } from 'svelte/store';
-import { QueryKey, getArrayQueryKey } from './internals/getArrayQueryKey';
+} from '@trpc/server';
+import { createTRPCFlatProxy, createTRPCRecursiveProxy } from '@trpc/server';
+import type { ProtectedIntersection } from '@trpc/server/unstable-core-do-not-import';
+import { onDestroy, onMount, setContext } from 'svelte';
+import { type Readable, derived, readable } from 'svelte/store';
+import {
+	type TRPCQueryKey,
+	getArrayQueryKey,
+} from './internals/getArrayQueryKey';
 import type { TRPCSSRData } from './server/utils';
 import {
-	DecorateProcedureUtils,
-	DecorateRouterUtils,
+	type DecorateRouterUtils,
+	type InfiniteQueryUtils,
+	type QueryUtils,
+	type ResolverDef,
 	callUtilMethod,
-} from './shared';
+} from './shared/utils';
 import { isSvelteStore } from './utils/isSvelteStore';
 import { splitUserOptions } from './utils/splitUserOptions';
 
@@ -64,96 +69,115 @@ type inferStoreOrVal<TStore> = TStore extends StoreOrVal<infer U> ? U : TStore;
 export type UserExposedOptions<TOptions> =
 	UserExposedTanstackQueryOptions<TOptions> & TRPCRequestOptions;
 
-type DecorateProcedure<TProcedure extends AnyProcedure> =
-	TProcedure extends AnyQueryProcedure
-		? {
-				query: <TData = inferTransformedProcedureOutput<TProcedure>>(
-					input: StoreOrVal<inferProcedureInput<TProcedure>>,
-					options?: StoreOrVal<
-						UserExposedOptions<
-							CreateQueryOptions<
-								inferTransformedProcedureOutput<TProcedure>,
-								TRPCClientErrorLike<TProcedure>,
-								TData,
-								QueryKey
-							>
-						>
-					>,
-				) => CreateQueryResult<TData, TRPCClientErrorLike<TProcedure>>;
-			} & (inferProcedureInput<TProcedure> extends { cursor?: infer TCursor }
-				? {
-						infiniteQuery: <
-							TData = InfiniteData<
-								inferTransformedProcedureOutput<TProcedure>,
-								TCursor
-							>,
-						>(
-							input: StoreOrVal<
-								Omit<inferProcedureInput<TProcedure>, 'cursor'>
-							>,
-							options: StoreOrVal<
-								UserExposedOptions<
-									CreateInfiniteQueryOptions<
-										inferTransformedProcedureOutput<TProcedure>,
-										TRPCClientErrorLike<TProcedure>,
-										TData,
-										inferTransformedProcedureOutput<TProcedure>,
-										QueryKey,
-										TCursor
-									>
-								>
-							>,
-						) => CreateInfiniteQueryResult<
+type DecorateProcedure<
+	TType extends TRPCProcedureType,
+	TDef extends ResolverDef,
+> = TType extends 'query'
+	? {
+			query: <TData = TDef['output']>(
+				input: StoreOrVal<TDef['input']>,
+				options?: StoreOrVal<
+					UserExposedOptions<
+						CreateQueryOptions<
+							TDef['output'],
+							TRPCClientErrorLike<TDef>,
 							TData,
-							TRPCClientErrorLike<TProcedure>
-						>;
-					}
-				: object)
-		: TProcedure extends AnyMutationProcedure
+							TRPCQueryKey
+						>
+					>
+				>,
+			) => CreateQueryResult<TData, TRPCClientErrorLike<TDef>>;
+			utils: QueryUtils<TDef>;
+		} & (TDef['input'] extends { cursor?: infer TCursor }
 			? {
-					mutation: <TContext = unknown>(
-						opts?: StoreOrVal<
+					infiniteQuery: <TData = InfiniteData<TDef['output'], TCursor>>(
+						input: StoreOrVal<Omit<TDef['input'], 'cursor'>>,
+						options: StoreOrVal<
 							UserExposedOptions<
-								inferStoreOrVal<
-									CreateMutationOptions<
-										inferTransformedProcedureOutput<TProcedure>,
-										TRPCClientErrorLike<TProcedure>,
-										inferProcedureInput<TProcedure>,
-										TContext
-									>
+								CreateInfiniteQueryOptions<
+									TDef['output'],
+									TRPCClientErrorLike<TDef>,
+									TData,
+									TDef['output'],
+									TRPCQueryKey,
+									TCursor
 								>
 							>
 						>,
-					) => CreateMutationResult<
-						inferTransformedProcedureOutput<TProcedure>,
-						TRPCClientErrorLike<TProcedure>,
-						inferProcedureInput<TProcedure>,
-						TContext
-					>;
+					) => CreateInfiniteQueryResult<TData, TRPCClientErrorLike<TDef>>;
+					utils: InfiniteQueryUtils<TDef>;
 				}
-			: never;
+			: object)
+	: TType extends 'mutation'
+		? {
+				mutation: <TContext = unknown>(
+					opts?: StoreOrVal<
+						UserExposedOptions<
+							inferStoreOrVal<
+								CreateMutationOptions<
+									TDef['output'],
+									TRPCClientErrorLike<TDef>,
+									TDef['input'],
+									TContext
+								>
+							>
+						>
+					>,
+				) => CreateMutationResult<
+					TDef['output'],
+					TRPCClientErrorLike<TDef>,
+					TDef['input'],
+					TContext
+				>;
+			}
+		: never;
 
-type DecoratedProcedureRecord<TProcedures extends ProcedureRouterRecord> = {
-	[TKey in keyof TProcedures]: TProcedures[TKey] extends AnyRouter
-		? DecoratedProcedureRecord<TProcedures[TKey]['_def']['record']>
-		: TProcedures[TKey] extends AnyProcedure
-			? DecorateProcedure<TProcedures[TKey]> &
-					DecorateProcedureUtils<TProcedures[TKey]>
-			: never;
+type DecorateRouterRecord<
+	TRoot extends AnyTRPCRootTypes,
+	TRecord extends TRPCRouterRecord,
+> = {
+	[TKey in keyof TRecord]: TRecord[TKey] extends infer $Value
+		? $Value extends AnyTRPCProcedure
+			? DecorateProcedure<
+					$Value['_def']['type'],
+					{
+						input: inferProcedureInput<$Value>;
+						output: inferTransformedProcedureOutput<TRoot, $Value>;
+						transformer: TRoot['transformer'];
+						errorShape: TRoot['errorShape'];
+					}
+				>
+			: $Value extends TRPCRouterRecord
+				? DecorateRouterRecord<TRoot, $Value>
+				: never
+		: never;
 } & DecorateRouterUtils;
 
 /**
  * @internal
  */
-export type CreateTRPCSvelteBase<_TRouter extends AnyRouter> = {
+export type CreateTRPCSvelteBase = {
 	queryClient: QueryClient;
-	hydrateFromServer: (data: TRPCSSRData) => QueryClient;
+	/**
+	 * Usage:
+	 * ```ts
+	 * const { data } = $props();
+	 * trpc.hydrateFromServer(() => data.trpc);
+	 * ```
+	 * @param data
+	 * @returns
+	 */
+	hydrateFromServer: (data: () => TRPCSSRData) => QueryClient;
 };
 
-export type CreateTRPCSvelte<TRouter extends AnyRouter> = ProtectedIntersection<
-	CreateTRPCSvelteBase<TRouter>,
-	DecoratedProcedureRecord<TRouter['_def']['record']>
->;
+export type CreateTRPCSvelte<TRouter extends AnyTRPCRouter> =
+	ProtectedIntersection<
+		CreateTRPCSvelteBase,
+		DecorateRouterRecord<
+			TRouter['_def']['_config']['$types'],
+			TRouter['_def']['record']
+		>
+	>;
 
 const clientMethods = {
 	query: [1, 'query'],
@@ -163,40 +187,57 @@ const clientMethods = {
 
 type ClientMethod = keyof typeof clientMethods;
 
-function createSvelteInternalProxy<TRouter extends AnyRouter>(
+function createSvelteInternalProxy<TRouter extends AnyTRPCRouter>(
 	client: TRPCUntypedClient<TRouter>,
 	opts: CreateTRPCSvelteOptions<TRouter>,
 ) {
 	let queryClient: QueryClient;
-	if (BROWSER) {
+	if (browser) {
 		queryClient = new QueryClient(opts.queryClientConfig);
 	}
 
-	return createFlatProxy<CreateTRPCSvelte<TRouter>>((firstPath) => {
+	return createTRPCFlatProxy<CreateTRPCSvelte<TRouter>>((firstPath) => {
 		switch (firstPath) {
 			case 'queryClient': {
-				// if (BROWSER) {
 				return queryClient;
-				// } else {
-				// 	throw new Error('`trpc.queryClient` is only available on the client');
-				// }
 			}
 			case 'hydrateFromServer': {
-				return (data: TRPCSSRData) => {
+				return (data: () => TRPCSSRData) => {
 					let client = queryClient;
-					if (!BROWSER) {
+					if (!browser) {
 						client = new QueryClient(opts.queryClientConfig);
 					}
-					for (const [key, value] of data) {
+
+					// Run initially on server
+					for (const [key, value] of data()) {
 						client.setQueryData(key, value);
 					}
+					let first = true;
+					$effect(() => {
+						const d = data();
+						if (first) {
+							first = false;
+							return;
+						}
+						for (const [key, value] of d) {
+							client.setQueryData(key, value);
+						}
+					});
+
+					setContext('$$_queryClient', client);
+					onMount(() => {
+						client.mount();
+					});
+					onDestroy(() => {
+						client.unmount();
+					});
 					return client;
 				};
 			}
 		}
 
-		return createRecursiveProxy(({ path, args: unknownArgs }) => {
-			path.unshift(firstPath);
+		return createTRPCRecursiveProxy(({ path: rawPath, args: unknownArgs }) => {
+			const path = [firstPath as string, ...rawPath];
 
 			const method = path.pop()! as ClientMethod;
 			const joinedPath = path.join('.');
@@ -249,7 +290,7 @@ function createSvelteInternalProxy<TRouter extends AnyRouter>(
 							const key = getArrayQueryKey(path, $input, queryType);
 							return {
 								...queryOptions,
-								enabled: queryOptions.enabled !== false && BROWSER,
+								enabled: queryOptions.enabled !== false && browser,
 								queryKey: key,
 								queryFn: () => client.query(joinedPath, $input, trpcOptions),
 							} as Options;
@@ -286,7 +327,7 @@ function createSvelteInternalProxy<TRouter extends AnyRouter>(
 							const key = getArrayQueryKey(path, $input, queryType);
 							return {
 								...queryOptions,
-								enabled: queryOptions.enabled !== false && BROWSER,
+								enabled: queryOptions.enabled !== false && browser,
 								queryKey: key,
 								queryFn: (context) => {
 									const input = { ...$input, cursor: context.pageParam };
@@ -307,12 +348,12 @@ function createSvelteInternalProxy<TRouter extends AnyRouter>(
 /**
  * @internal
  */
-type CreateTRPCSvelteOptions<TRouter extends AnyRouter> =
+type CreateTRPCSvelteOptions<TRouter extends AnyTRPCRouter> =
 	CreateTRPCClientOptions<TRouter> & {
 		queryClientConfig?: QueryClientConfig;
 	};
 
-export function createTRPCSvelte<TRouter extends AnyRouter>(
+export function createTRPCSvelte<TRouter extends AnyTRPCRouter>(
 	opts: CreateTRPCSvelteOptions<TRouter>,
 ): CreateTRPCSvelte<TRouter> {
 	const client = createTRPCUntypedClient<TRouter>(opts);

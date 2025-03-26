@@ -1,17 +1,18 @@
 {
 	"name": "trpc-svelte-query",
-	"version": "2.1.0",
+	"version": "3.0.0",
 	"description": "Use tRPC with SvelteKit and Tanstack Query (full SSR support)",
 	"author": "Ottomated",
 	"license": "MIT",
-	"module": "dist/index.mjs",
+	"type": "module",
+	"module": "dist/index.svelte.js",
 	"typesVersions": {
 		"*": {
 			"*": [
-				"dist/index.d.mts"
+				"dist/index.svelte.d.ts"
 			],
 			"server": [
-				"dist/server/index.d.mts"
+				"dist/server/index.d.ts"
 			]
 		}
 	},
@@ -25,30 +26,27 @@
 		"dev": "tsup --watch"
 	},
 	"exports": {
-		".": "./dist/index.mjs",
-		"./server": "./dist/server/index.mjs"
+		".": "./dist/index.svelte.js",
+		"./server": "./dist/server/index.js"
 	},
 	"files": [
 		"dist",
 		"src",
 		"README.md"
 	],
-	"dependencies": {
-		"esm-env": "^1.0.0"
-	},
 	"peerDependencies": {
-		"@sveltejs/kit": "^2.5.2",
-		"@tanstack/svelte-query": "^5.24.1",
-		"@trpc/client": "^10.45.1",
-		"@trpc/server": "^10.45.1",
-		"svelte": ">=3 <5"
+		"@sveltejs/kit": ">=2.20.0 <3",
+		"@tanstack/svelte-query": "^5.69.0",
+		"@trpc/client": "^11.0.0",
+		"@trpc/server": "^11.0.0",
+		"svelte": ">=3 <6"
 	},
 	"devDependencies": {
-		"@sveltejs/kit": "^2.5.2",
-		"@tanstack/svelte-query": "^5.24.1",
+		"@sveltejs/kit": "^2.20.2",
+		"@tanstack/svelte-query": "^5.69.0",
 		"@trivago/prettier-plugin-sort-imports": "^4.3.0",
-		"@trpc/client": "^10.45.1",
-		"@trpc/server": "^10.45.1",
+		"@trpc/client": "^11.0.0",
+		"@trpc/server": "^11.0.0",
 		"@types/node": "^20.11.20",
 		"@typescript-eslint/eslint-plugin": "^7.1.0",
 		"@typescript-eslint/parser": "^7.1.0",
@@ -59,7 +57,7 @@
 		"prettier": "^3.2.5",
 		"tslib": "^2.6.2",
 		"tsup": "^8.0.2",
-		"typescript": "^5.3.3"
+		"typescript": "^5.8.2"
 	},
 	"publishConfig": {
 		"access": "public"

@@ -1,34 +1,62 @@
-export type QueryType = 'query' | 'infinite' | 'any';
+import { skipToken } from '@tanstack/svelte-query';
+import { isObject } from '@trpc/server/unstable-core-do-not-import';
 
-export type QueryKey = [
-	string[],
+export type QueryType = 'any' | 'infinite' | 'query';
+
+export type TRPCQueryKey = [
+	readonly string[],
 	{ input?: unknown; type?: Exclude<QueryType, 'any'> }?,
 ];
 
 /**
  * To allow easy interactions with groups of related queries, such as
  * invalidating all queries of a router, we use an array as the path when
- * storing in tanstack query. This function doesn't need to convert legacy
- * formats.
+ * storing in tanstack query.
  **/
 export function getArrayQueryKey(
-	path: string[],
+	path: readonly string[],
 	input: unknown,
 	type: QueryType,
-): QueryKey {
+): TRPCQueryKey {
 	// Construct a query key that is easy to destructure and flexible for
 	// partial selecting etc.
 	// https://github.com/trpc/trpc/issues/3128
-	const hasInput = typeof input !== 'undefined';
-	const hasType = type && type !== 'any';
-	if (!hasInput && !hasType)
+
+	// some parts of the path may be dot-separated, split them up
+	const splitPath = path.flatMap((part) => part.split('.'));
+
+	if (!input && (!type || type === 'any')) {
+		// this matches also all mutations (see `getMutationKeyInternal`)
+
 		// for `utils.invalidate()` to match all queries (including vanilla react-query)
 		// we don't want nested array if path is empty, i.e. `[]` instead of `[[]]`
-		return path.length ? [path] : ([] as unknown as QueryKey);
+		return splitPath.length ? [splitPath] : ([] as unknown as TRPCQueryKey);
+	}
 
-	const inputAndType = {} as Exclude<QueryKey[1], undefined>;
-	if (hasInput) inputAndType.input = input;
-	if (hasType) inputAndType.type = type;
-
-	return [path, inputAndType];
+	if (
+		type === 'infinite' &&
+		isObject(input) &&
+		('direction' in input || 'cursor' in input)
+	) {
+		const {
+			cursor: _,
+			direction: __,
+			...inputWithoutCursorAndDirection
+		} = input;
+		return [
+			splitPath,
+			{
+				input: inputWithoutCursorAndDirection,
+				type: 'infinite',
+			},
+		];
+	}
+	return [
+		splitPath,
+		{
+			...(typeof input !== 'undefined' &&
+				input !== skipToken && { input: input }),
+			...(type && type !== 'any' && { type: type }),
+		},
+	];
 }

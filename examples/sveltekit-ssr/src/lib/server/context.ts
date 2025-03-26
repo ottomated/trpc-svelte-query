@@ -1,10 +1,9 @@
-import type { RequestEvent } from "@sveltejs/kit";
-import type { inferAsyncReturnType } from "@trpc/server";
+import type { RequestEvent } from '@sveltejs/kit';
 
 export const createContext = async (event: RequestEvent) => {
 	return {
-		event
-	}
+		event,
+	};
 };
 
-export type Context = inferAsyncReturnType<typeof createContext>;
+export type Context = Awaited<ReturnType<typeof createContext>>;

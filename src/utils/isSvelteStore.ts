@@ -1,5 +1,5 @@
-import { StoreOrVal } from '@tanstack/svelte-query';
-import { Readable } from 'svelte/store';
+import type { StoreOrVal } from '@tanstack/svelte-query';
+import type { Readable } from 'svelte/store';
 
 export function isSvelteStore<TStore extends object>(
 	obj: StoreOrVal<TStore>,

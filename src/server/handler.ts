@@ -1,16 +1,16 @@
 import type { RequestEvent } from '@sveltejs/kit';
-import { AnyRouter, inferRouterContext } from '@trpc/server';
-import { HTTPRequest, resolveHTTPResponse } from '@trpc/server/http';
-import { CreateTRPCSvelteServerOptions } from './createTRPCSvelteServer';
+import type { AnyTRPCRouter, inferRouterContext } from '@trpc/server';
+import { resolveResponse } from '@trpc/server/http';
+import type { CreateTRPCSvelteServerOptions } from './createTRPCSvelteServer';
 
-export type SvelteCreateContextFn<TRouter extends AnyRouter> = (
+export type SvelteCreateContextFn<TRouter extends AnyTRPCRouter> = (
 	event: RequestEvent,
 ) => inferRouterContext<TRouter> | Promise<inferRouterContext<TRouter>>;
 
 /**
  * @internal
  */
-export type SvelteCreateContextOption<TRouter extends AnyRouter> =
+export type SvelteCreateContextOption<TRouter extends AnyTRPCRouter> =
 	unknown extends inferRouterContext<TRouter>
 		? {
 				/**
@@ -25,59 +25,29 @@ export type SvelteCreateContextOption<TRouter extends AnyRouter> =
 				createContext: SvelteCreateContextFn<TRouter>;
 			};
 
-export async function svelteRequestHandler<TRouter extends AnyRouter>(
+export async function svelteRequestHandler<TRouter extends AnyTRPCRouter>(
 	opts: CreateTRPCSvelteServerOptions<TRouter>,
 	event: RequestEvent,
 ) {
-	const resHeaders = new Headers();
-
 	const createContext = async () => {
 		return opts.createContext?.(event);
 	};
 
-	const request = event.request;
-	const url = new URL(request.url);
+	const url = new URL(event.request.url);
 	const path = url.pathname.slice(opts.endpoint.length + 1);
-	const req: HTTPRequest = {
-		query: url.searchParams,
-		method: request.method,
-		headers: Object.fromEntries(request.headers),
-		body:
-			request.headers.get('content-type') === 'application/json'
-				? await request.text()
-				: '',
-	};
 
-	const result = await resolveHTTPResponse({
-		req,
+	const result = await resolveResponse({
+		req: event.request,
 		createContext,
 		path,
 		router: opts.router,
-		batching: opts.batching,
+		allowBatching: opts.allowBatching,
 		responseMeta: opts.responseMeta,
+		error: null,
 		onError(o) {
 			opts?.onError?.({ ...o, req: event.request });
 		},
 	});
 
-	for (const [key, value] of Object.entries(result.headers ?? {})) {
-		/* istanbul ignore if -- @preserve */
-		if (typeof value === 'undefined') {
-			continue;
-		}
-
-		if (typeof value === 'string') {
-			resHeaders.set(key, value);
-			continue;
-		}
-
-		for (const v of value) {
-			resHeaders.append(key, v);
-		}
-	}
-
-	return new Response(result.body, {
-		status: result.status,
-		headers: resHeaders,
-	});
+	return result;
 }

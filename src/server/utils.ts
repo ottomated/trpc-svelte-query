@@ -4,13 +4,13 @@ import type { QueryKey } from '@tanstack/svelte-query';
 /**
  * @internal
  */
-export const localsSymbol = Symbol('trpcSSRData');
+export const TRPC_SSR_DATA = Symbol('trpcSSRData');
 
 /**
  * @internal
  */
 export type RequestEventLocals = {
-	[localsSymbol]: TRPCSSRData;
+	[TRPC_SSR_DATA]?: TRPCSSRData;
 };
 
 /**
@@ -21,14 +21,19 @@ export type TRPCSSRData = Map<QueryKey, unknown>;
 /**
  * @internal
  */
-export function getSSRData(event: RequestEvent) {
+export function hydrateToClient(
+	event: RequestEvent & { locals: RequestEventLocals },
+) {
+	// const event = getRequestEvent() as RequestEvent & {
+	// 	locals: RequestEventLocals;
+	// };
+	// re-run when pathname changes
 	event.url.pathname;
-	const locals = event.locals as RequestEventLocals;
-	if (!locals[localsSymbol]) {
+	if (!(TRPC_SSR_DATA in event.locals)) {
 		const m = new Map();
-		locals[localsSymbol] = m;
+		event.locals[TRPC_SSR_DATA] = m;
 		return m;
 	}
 
-	return locals[localsSymbol];
+	return event.locals[TRPC_SSR_DATA];
 }
