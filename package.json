@@ -21,6 +21,7 @@
 		"url": "git+https://github.com/ottomated/trpc-svelte-query.git"
 	},
 	"scripts": {
+		"prepublish": "pnpm build",
 		"build": "rm -rf dist && tsup",
 		"lint": "eslint --fix --ext \".js,.ts\" --report-unused-disable-directives src",
 		"dev": "tsup --watch"
