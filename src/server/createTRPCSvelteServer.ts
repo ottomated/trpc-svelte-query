@@ -5,6 +5,7 @@ import {
 	type ServerLoadEvent,
 	error,
 } from '@sveltejs/kit';
+import { type InfiniteData, hashKey } from '@tanstack/svelte-query';
 import { createTRPCFlatProxy, createTRPCRecursiveProxy } from '@trpc/server';
 import type {
 	AnyTRPCProcedure,
@@ -41,7 +42,7 @@ type DecorateProcedure<TDef extends { input: any; output: any }> =
 				 * throws an error, this will throw a SvelteKit-friendly error.
 				 */
 				ssr: () => Promise<TDef['output'] | undefined>;
-			}
+		  }
 		: {
 				/**
 				 * Preload the data for use on the page. You **don't** need
@@ -49,7 +50,7 @@ type DecorateProcedure<TDef extends { input: any; output: any }> =
 				 * throws an error, this will throw a SvelteKit-friendly error.
 				 */
 				ssr: (input: TDef['input']) => Promise<TDef['output'] | undefined>;
-			}) &
+		  }) &
 		(TDef['input'] extends { cursor?: any }
 			? {
 					/**
@@ -60,7 +61,7 @@ type DecorateProcedure<TDef extends { input: any; output: any }> =
 					ssrInfinite: (
 						input: TDef['input'],
 					) => Promise<TDef['output'] | undefined>;
-				}
+			  }
 			: object);
 
 type DecorateRouterRecord<
@@ -80,11 +81,11 @@ type DecorateRouterRecord<
 				? DecorateProcedure<{
 						input: inferProcedureInput<$Value>;
 						output: inferTransformedProcedureOutput<TRoot, $Value>;
-					}>
+				  }>
 				: never
 			: $Value extends TRPCRouterRecord
-				? DecorateRouterRecord<TRoot, $Value>
-				: never
+			? DecorateRouterRecord<TRoot, $Value>
+			: never
 		: never;
 };
 
@@ -169,7 +170,29 @@ export function createTRPCSvelteServer<TRouter extends AnyTRPCRouter>(
 						locals[TRPC_SSR_DATA] = new Map();
 					}
 					const key = getArrayQueryKey(path, args[0], procedureType);
-					locals[TRPC_SSR_DATA]!.set(key, result);
+					if (procedureType === 'query') {
+						locals[TRPC_SSR_DATA]!.set(key, result);
+					} else {
+						// infinite query
+						const hash = hashKey(key);
+						let previousData: InfiniteData<any, any> | undefined;
+						for (const [key, data] of locals[TRPC_SSR_DATA]!) {
+							if (hashKey(key) === hash) {
+								previousData = data as any;
+								break;
+							}
+						}
+						const existed = previousData !== undefined;
+						previousData ??= {
+							pages: [],
+							pageParams: [],
+						};
+						previousData.pages.push(result);
+						previousData.pageParams.push((args[0] as { cursor?: any }).cursor);
+						if (!existed) {
+							locals[TRPC_SSR_DATA]!.set(key, previousData);
+						}
+					}
 
 					return result;
 				})

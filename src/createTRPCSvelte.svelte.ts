@@ -88,7 +88,7 @@ type DecorateProcedure<
 				>,
 			) => CreateQueryResult<TData, TRPCClientErrorLike<TDef>>;
 			utils: QueryUtils<TDef>;
-		} & (TDef['input'] extends { cursor?: infer TCursor }
+	  } & (TDef['input'] extends { cursor?: infer TCursor }
 			? {
 					infiniteQuery: <TData = InfiniteData<TDef['output'], TCursor>>(
 						input: StoreOrVal<Omit<TDef['input'], 'cursor'>>,
@@ -106,31 +106,31 @@ type DecorateProcedure<
 						>,
 					) => CreateInfiniteQueryResult<TData, TRPCClientErrorLike<TDef>>;
 					utils: InfiniteQueryUtils<TDef>;
-				}
+			  }
 			: object)
 	: TType extends 'mutation'
-		? {
-				mutation: <TContext = unknown>(
-					opts?: StoreOrVal<
-						UserExposedOptions<
-							inferStoreOrVal<
-								CreateMutationOptions<
-									TDef['output'],
-									TRPCClientErrorLike<TDef>,
-									TDef['input'],
-									TContext
-								>
+	? {
+			mutation: <TContext = unknown>(
+				opts?: StoreOrVal<
+					UserExposedOptions<
+						inferStoreOrVal<
+							CreateMutationOptions<
+								TDef['output'],
+								TRPCClientErrorLike<TDef>,
+								TDef['input'],
+								TContext
 							>
 						>
-					>,
-				) => CreateMutationResult<
-					TDef['output'],
-					TRPCClientErrorLike<TDef>,
-					TDef['input'],
-					TContext
-				>;
-			}
-		: never;
+					>
+				>,
+			) => CreateMutationResult<
+				TDef['output'],
+				TRPCClientErrorLike<TDef>,
+				TDef['input'],
+				TContext
+			>;
+	  }
+	: never;
 
 type DecorateRouterRecord<
 	TRoot extends AnyTRPCRootTypes,
@@ -146,10 +146,10 @@ type DecorateRouterRecord<
 						transformer: TRoot['transformer'];
 						errorShape: TRoot['errorShape'];
 					}
-				>
+			  >
 			: $Value extends TRPCRouterRecord
-				? DecorateRouterRecord<TRoot, $Value>
-				: never
+			? DecorateRouterRecord<TRoot, $Value>
+			: never
 		: never;
 } & DecorateRouterUtils;
 
@@ -270,10 +270,10 @@ function createSvelteInternalProxy<TRouter extends AnyTRPCRouter>(
 				method === 'mutation'
 					? undefined
 					: // If it's a store, use it
-						args[0] && isSvelteStore(args[0])
-						? args[0]
-						: // wrap the input in a store
-							readable(args[0]);
+					args[0] && isSvelteStore(args[0])
+					? args[0]
+					: // wrap the input in a store
+					  readable(args[0]);
 
 			// Create the query key - input is undefined for mutations
 
