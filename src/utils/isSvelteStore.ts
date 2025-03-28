@@ -6,6 +6,7 @@ export function isSvelteStore<TStore extends object>(
 ): obj is Readable<TStore> {
 	return (
 		typeof obj === 'object' &&
+		obj !== null &&
 		'subscribe' in obj &&
 		typeof obj.subscribe === 'function'
 	);
