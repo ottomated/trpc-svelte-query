@@ -42,7 +42,7 @@ type DecorateProcedure<TDef extends { input: any; output: any }> =
 				 * throws an error, this will throw a SvelteKit-friendly error.
 				 */
 				ssr: () => Promise<TDef['output'] | undefined>;
-		  }
+			}
 		: {
 				/**
 				 * Preload the data for use on the page. You **don't** need
@@ -50,7 +50,7 @@ type DecorateProcedure<TDef extends { input: any; output: any }> =
 				 * throws an error, this will throw a SvelteKit-friendly error.
 				 */
 				ssr: (input: TDef['input']) => Promise<TDef['output'] | undefined>;
-		  }) &
+			}) &
 		(TDef['input'] extends { cursor?: any }
 			? {
 					/**
@@ -61,7 +61,7 @@ type DecorateProcedure<TDef extends { input: any; output: any }> =
 					ssrInfinite: (
 						input: TDef['input'],
 					) => Promise<TDef['output'] | undefined>;
-			  }
+				}
 			: object);
 
 type DecorateRouterRecord<
@@ -81,11 +81,11 @@ type DecorateRouterRecord<
 				? DecorateProcedure<{
 						input: inferProcedureInput<$Value>;
 						output: inferTransformedProcedureOutput<TRoot, $Value>;
-				  }>
+					}>
 				: never
 			: $Value extends TRPCRouterRecord
-			? DecorateRouterRecord<TRoot, $Value>
-			: never
+				? DecorateRouterRecord<TRoot, $Value>
+				: never
 		: never;
 };
 
