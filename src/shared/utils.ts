@@ -82,9 +82,9 @@ export type QueryUtils<TDef extends ResolverDef> = {
 	) => TDef['output'] | undefined;
 };
 
-type ExtractCursorType<TInput> = NonNullable<
-	TInput extends { cursor?: any } ? TInput['cursor'] : unknown
->;
+type ExtractCursorType<TInput> = TInput extends { cursor?: any }
+	? TInput['cursor']
+	: unknown;
 
 export type InfiniteQueryUtils<TDef extends ResolverDef> = QueryUtils<TDef> & {
 	prefetchInfinite: (
