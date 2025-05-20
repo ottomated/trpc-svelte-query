@@ -82,6 +82,10 @@ export type QueryUtils<TDef extends ResolverDef> = {
 	) => TDef['output'] | undefined;
 };
 
+type ExtractCursorType<TInput> = NonNullable<
+	TInput extends { cursor?: any } ? TInput['cursor'] : unknown
+>;
+
 export type InfiniteQueryUtils<TDef extends ResolverDef> = QueryUtils<TDef> & {
 	prefetchInfinite: (
 		input: TDef['input'],
@@ -98,12 +102,16 @@ export type InfiniteQueryUtils<TDef extends ResolverDef> = QueryUtils<TDef> & {
 	getInfiniteData(
 		input?: TDef['input'],
 		filters?: QueryFilters,
-	): InfiniteData<TDef['output']> | undefined;
+	): InfiniteData<TDef['output'], ExtractCursorType<TDef['input']>> | undefined;
 	setInfiniteData(
 		input: TDef['input'],
-		updater: Updater<TDef['output'] | undefined, TDef['output'] | undefined>,
+		updater: Updater<
+			| InfiniteData<TDef['output'], ExtractCursorType<TDef['input']>>
+			| undefined,
+			InfiniteData<TDef['output'], ExtractCursorType<TDef['input']>> | undefined
+		>,
 		options?: SetDataOptions,
-	): TDef['output'] | undefined;
+	): void;
 };
 
 /**
