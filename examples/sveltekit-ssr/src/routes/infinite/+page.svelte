@@ -9,12 +9,12 @@
 	);
 </script>
 
-<h1>Todo {$infinite.status}</h1>
+<h1>Todo {infinite.status}</h1>
 
-{#if $infinite.isSuccess}
-	<p>Data: {JSON.stringify($infinite.data)}</p>
-{:else if $infinite.isError}
-	<p>Error: {$infinite.error.message}</p>
+{#if infinite.isSuccess}
+	<p>Data: {JSON.stringify(infinite.data)}</p>
+{:else if infinite.isError}
+	<p>Error: {infinite.error.message}</p>
 {/if}
 
-<button on:click={() => $infinite.fetchNextPage()}>More</button>
+<button on:click={() => infinite.fetchNextPage()}>More</button>

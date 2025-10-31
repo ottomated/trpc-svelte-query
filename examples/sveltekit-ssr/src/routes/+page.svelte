@@ -17,14 +17,14 @@
 
 <h1>Todos</h1>
 
-{#if $todos.isSuccess}
-	{#each $todos.data as todo}
+{#if todos.isSuccess}
+	{#each todos.data as todo}
 		<a href="/todos/{todo.id}">{todo.data}</a>
 		<p data-id={todo.id}>
 			<input
 				value={todo.data}
 				onblur={(ev) => {
-					$updateTodo.mutate({
+					updateTodo.mutate({
 						id: todo.id,
 						data: ev.currentTarget.value,
 					});
@@ -32,24 +32,24 @@
 			/>
 			<button
 				onclick={() => {
-					$deleteTodo.mutate({ id: todo.id });
+					deleteTodo.mutate({ id: todo.id });
 				}}
 			>
 				delete
 			</button>
 		</p>
 	{/each}
-{:else if $todos.isError}
-	<p>Error: {$todos.error.message}</p>
+{:else if todos.isError}
+	<p>Error: {todos.error.message}</p>
 {:else}
 	<p>Loading...</p>
 {/if}
 
 <input bind:value={newTodo} placeholder="New todo" />
 <button
-	disabled={$addTodo.isPending}
+	disabled={addTodo.isPending}
 	onclick={() => {
-		$addTodo.mutate({ data: newTodo });
+		addTodo.mutate({ data: newTodo });
 		newTodo = '';
 	}}
 >
@@ -58,4 +58,4 @@
 
 <h2>State</h2>
 
-<pre>{JSON.stringify($todos, null, 2)}</pre>
+<pre>{JSON.stringify(todos, null, 2)}</pre>

@@ -8,7 +8,6 @@ import type {
 	CreateQueryResult,
 	InfiniteData,
 	QueryClientConfig,
-	StoreOrVal,
 	UndefinedInitialDataOptions,
 } from '@tanstack/svelte-query';
 import {
@@ -36,7 +35,6 @@ import type {
 import { createTRPCFlatProxy, createTRPCRecursiveProxy } from '@trpc/server';
 import type { ProtectedIntersection } from '@trpc/server/unstable-core-do-not-import';
 import { onDestroy, onMount, setContext } from 'svelte';
-import { type Readable, derived, readable } from 'svelte/store';
 import {
 	type TRPCQueryKey,
 	getArrayQueryKey,
@@ -49,7 +47,6 @@ import {
 	type ResolverDef,
 	callUtilMethod,
 } from './shared/utils';
-import { isSvelteStore } from './utils/isSvelteStore';
 import { splitUserOptions } from './utils/splitUserOptions';
 
 /**
@@ -60,8 +57,6 @@ export type UserExposedTanstackQueryOptions<TOptions> = Omit<
 	TOptions,
 	'queryFn' | 'queryKey' | 'mutationFn' | 'mutationKey'
 >;
-
-type inferStoreOrVal<TStore> = TStore extends StoreOrVal<infer U> ? U : TStore;
 
 /**
  * @internal
@@ -75,15 +70,13 @@ type DecorateProcedure<
 > = TType extends 'query'
 	? {
 			query: <TData = TDef['output']>(
-				input: StoreOrVal<TDef['input']>,
-				options?: StoreOrVal<
-					UserExposedOptions<
-						CreateQueryOptions<
-							TDef['output'],
-							TRPCClientErrorLike<TDef>,
-							TData,
-							TRPCQueryKey
-						>
+				input: TDef['input'],
+				options?: UserExposedOptions<
+					CreateQueryOptions<
+						TDef['output'],
+						TRPCClientErrorLike<TDef>,
+						TData,
+						TRPCQueryKey
 					>
 				>,
 			) => CreateQueryResult<TData, TRPCClientErrorLike<TDef>>;
@@ -91,17 +84,14 @@ type DecorateProcedure<
 		} & (TDef['input'] extends { cursor?: infer TCursor }
 			? {
 					infiniteQuery: <TData = InfiniteData<TDef['output'], TCursor>>(
-						input: StoreOrVal<Omit<TDef['input'], 'cursor'>>,
-						options: StoreOrVal<
-							UserExposedOptions<
-								CreateInfiniteQueryOptions<
-									TDef['output'],
-									TRPCClientErrorLike<TDef>,
-									TData,
-									TDef['output'],
-									TRPCQueryKey,
-									TCursor
-								>
+						input: Omit<TDef['input'], 'cursor'>,
+						options: UserExposedOptions<
+							CreateInfiniteQueryOptions<
+								TDef['output'],
+								TRPCClientErrorLike<TDef>,
+								TData,
+								TRPCQueryKey,
+								TCursor
 							>
 						>,
 					) => CreateInfiniteQueryResult<TData, TRPCClientErrorLike<TDef>>;
@@ -111,16 +101,12 @@ type DecorateProcedure<
 	: TType extends 'mutation'
 		? {
 				mutation: <TContext = unknown>(
-					opts?: StoreOrVal<
-						UserExposedOptions<
-							inferStoreOrVal<
-								CreateMutationOptions<
-									TDef['output'],
-									TRPCClientErrorLike<TDef>,
-									TDef['input'],
-									TContext
-								>
-							>
+					opts?: UserExposedOptions<
+						CreateMutationOptions<
+							TDef['output'],
+							TRPCClientErrorLike<TDef>,
+							TDef['input'],
+							TContext
 						>
 					>,
 				) => CreateMutationResult<
@@ -260,82 +246,63 @@ function createSvelteInternalProxy<TRouter extends AnyTRPCRouter>(
 			const args = unknownArgs as any[];
 
 			const [optionIndex, queryType] = methodData;
-			const options = args[optionIndex] as UserExposedOptions<any> | undefined;
+			const requestOptions = args[optionIndex] as
+				| UserExposedOptions<any>
+				| undefined;
 
-			const optionsStore =
-				options && isSvelteStore(options) ? options : readable(options ?? {});
-
-			const inputStore =
+			const requestInput =
 				// Mutation doesn't have input
-				method === 'mutation'
-					? undefined
-					: // If it's a store, use it
-						args[0] && isSvelteStore(args[0])
-						? args[0]
-						: // wrap the input in a store
-							readable(args[0]);
+				method === 'mutation' ? undefined : args[0];
 
 			// Create the query key - input is undefined for mutations
 
 			switch (method) {
 				case 'query': {
-					type Options = inferStoreOrVal<UndefinedInitialDataOptions>;
-					const options = derived(
-						[
-							inputStore!,
-							optionsStore as Readable<UserExposedOptions<Options>>,
-						],
-						([$input, $options]) => {
-							const [queryOptions, trpcOptions] = splitUserOptions($options);
-							const key = getArrayQueryKey(path, $input, queryType);
-							return {
-								...queryOptions,
-								enabled: queryOptions.enabled !== false && browser,
-								queryKey: key,
-								queryFn: () => client.query(joinedPath, $input, trpcOptions),
-							} as Options;
-						},
-					);
+					const options = () => {
+						const [queryOptions, trpcOptions] =
+							splitUserOptions(requestOptions);
+						const key = getArrayQueryKey(path, requestInput, queryType);
+						return {
+							...queryOptions,
+							enabled: queryOptions?.enabled !== false && browser,
+							queryKey: key,
+							queryFn: () =>
+								client.query(joinedPath, requestInput, trpcOptions),
+						} as UndefinedInitialDataOptions;
+					};
 					return createQuery(options);
 				}
 				case 'mutation': {
-					type Options = inferStoreOrVal<CreateMutationOptions>;
-					const options = derived(
-						optionsStore as Readable<UserExposedOptions<Options>>,
-						($options) => {
-							const [queryOptions, trpcOptions] = splitUserOptions($options);
-							const key = getArrayQueryKey(path, undefined, queryType);
-							return {
-								...queryOptions,
-								mutationKey: key,
-								mutationFn: (variables) =>
-									client.mutation(joinedPath, variables, trpcOptions),
-							} as Options;
-						},
-					);
+					const options = () => {
+						const [queryOptions, trpcOptions] =
+							splitUserOptions(requestOptions);
+						const key = getArrayQueryKey(path, undefined, queryType);
+						return {
+							...queryOptions,
+							mutationKey: key,
+							mutationFn: (variables) =>
+								client.mutation(joinedPath, variables, trpcOptions),
+						} as CreateMutationOptions;
+					};
 					return createMutation(options);
 				}
 				case 'infiniteQuery': {
-					type Options = inferStoreOrVal<CreateInfiniteQueryOptions>;
-					const options = derived(
-						[
-							inputStore!,
-							optionsStore as Readable<UserExposedOptions<Options>>,
-						],
-						([$input, $options]) => {
-							const [queryOptions, trpcOptions] = splitUserOptions($options);
-							const key = getArrayQueryKey(path, $input, queryType);
-							return {
-								...queryOptions,
-								enabled: queryOptions.enabled !== false && browser,
-								queryKey: key,
-								queryFn: (context) => {
-									const input = { ...$input, cursor: context.pageParam };
-									return client.query(joinedPath, input, trpcOptions);
-								},
-							} as Options;
-						},
-					);
+					const options = () => {
+						const [queryOptions, trpcOptions] =
+							splitUserOptions(requestOptions);
+						const key = getArrayQueryKey(path, requestInput, queryType);
+						return {
+							...queryOptions,
+							enabled: queryOptions?.enabled !== false && browser,
+							queryKey: key,
+							queryFn: (context) => {
+								const input = { ...requestInput, cursor: context.pageParam };
+								return client.query(joinedPath, input, trpcOptions);
+							},
+							getNextPageParam: queryOptions?.getNextPageParam,
+							initialPageParam: queryOptions?.initialPageParam,
+						} as CreateInfiniteQueryOptions;
+					};
 					return createInfiniteQuery(options);
 				}
 				default:
