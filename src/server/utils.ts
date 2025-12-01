@@ -22,10 +22,11 @@ export type TRPCSSRData = Map<QueryKey, unknown>;
  * @internal
  */
 export function hydrateToClient(event: RequestEvent & { locals: RequestEventLocals }) {
+	// We can't use getRequestEvent() here - https://github.com/sveltejs/kit/issues/13647
 	// const event = getRequestEvent() as RequestEvent & {
 	// 	locals: RequestEventLocals;
 	// };
-	// re-run when pathname changes
+	// oxlint-disable-next-line no-unused-expressions - re-run when pathname changes
 	event.url.pathname;
 	if (!(TRPC_SSR_DATA in event.locals)) {
 		const m = new Map();

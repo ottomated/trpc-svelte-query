@@ -1,6 +1,6 @@
 {
 	"name": "trpc-svelte-query",
-	"version": "3.0.3",
+	"version": "4.0.0",
 	"description": "Use tRPC with SvelteKit and Tanstack Query (full SSR support)",
 	"author": "Ottomated",
 	"license": "MIT",
@@ -55,5 +55,6 @@
 	},
 	"publishConfig": {
 		"access": "public"
-	}
+	},
+	"packageManager": "pnpm@10.22.0"
 }

@@ -35,7 +35,6 @@ import type {
 import { createTRPCFlatProxy, createTRPCRecursiveProxy } from '@trpc/server';
 import type { ProtectedIntersection } from '@trpc/server/unstable-core-do-not-import';
 import { onDestroy, onMount, setContext } from 'svelte';
-import { type Readable, derived, readable } from 'svelte/store';
 import { type TRPCQueryKey, getQueryKeyInternal } from '../shared/utils';
 import type { TRPCSSRData } from '../server/utils';
 import {
@@ -152,14 +151,6 @@ export type CreateTRPCSvelte<TRouter extends AnyTRPCRouter> = ProtectedIntersect
 	DecorateRouterRecord<TRouter['_def']['_config']['$types'], TRouter['_def']['record']>
 >;
 
-const clientMethods = {
-	query: [1, 'query'],
-	mutation: [0, 'any'],
-	infiniteQuery: [1, 'infinite'],
-} as const;
-
-type ClientMethod = keyof typeof clientMethods;
-
 function createSvelteInternalProxy<TRouter extends AnyTRPCRouter>(
 	client: TRPCUntypedClient<TRouter>,
 	opts: CreateTRPCSvelteOptions<TRouter>,
@@ -209,94 +200,69 @@ function createSvelteInternalProxy<TRouter extends AnyTRPCRouter>(
 			}
 		}
 
-		return createTRPCRecursiveProxy(({ path: rawPath, args: unknownArgs }) => {
+		return createTRPCRecursiveProxy(({ path: rawPath, args }) => {
 			const path = [firstPath as string, ...rawPath];
 
-			const method = path.pop()! as ClientMethod;
+			const method = path.pop()!;
 			const joinedPath = path.join('.');
-
-			// Pull the query options out of the args - it's at a different index based on the method
-			const methodData = clientMethods[method];
-			if (!methodData) {
-				const utils = path.pop();
-				if (utils === 'utils') {
-					return callUtilMethod(client, queryClient, path, method as any, unknownArgs);
-				}
-				throw new TypeError(`trpc.${joinedPath}.${method} is not a function`);
-			}
-			const args = unknownArgs as any[];
-
-			const [optionIndex, queryType] = methodData;
-			const options = args[optionIndex] as UserExposedOptions<any> | undefined;
-
-			const optionsStore = options && isSvelteStore(options) ? options : readable(options ?? {});
-
-			const inputStore =
-				// Mutation doesn't have input
-				method === 'mutation'
-					? undefined
-					: // If it's a store, use it
-						args[0] && isSvelteStore(args[0])
-						? args[0]
-						: // wrap the input in a store
-							readable(args[0]);
 
 			switch (method) {
 				case 'query': {
-					type Options = inferStoreOrVal<UndefinedInitialDataOptions>;
-					const options = derived(
-						[inputStore!, optionsStore as Readable<UserExposedOptions<Options>>],
-						([$input, $options]) => {
-							const [queryOptions, trpcOptions] = splitUserOptions($options);
-							const key = getArrayQueryKey(path, $input, queryType);
-							return {
-								...queryOptions,
-								enabled: queryOptions.enabled !== false && browser,
-								queryKey: key,
-								queryFn: () => client.query(joinedPath, $input, trpcOptions),
-							} as Options;
-						},
-					);
-					return createQuery(options);
+					const inputFn = args[0] as (() => unknown) | undefined;
+					const optionsFn = args[1] as (() => UserExposedOptions<CreateQueryOptions>) | undefined;
+
+					return createQuery(() => {
+						const input = inputFn?.();
+						const [queryOptions, trpcOptions] = splitUserOptions(optionsFn?.());
+						const key = getQueryKeyInternal(path, input, 'query');
+						return {
+							...queryOptions,
+							enabled: !browser ? false : queryOptions.enabled,
+							queryKey: key,
+							queryFn: () => client.query(joinedPath, input, trpcOptions),
+						} as UndefinedInitialDataOptions;
+					});
 				}
 				case 'mutation': {
-					type Options = inferStoreOrVal<CreateMutationOptions>;
-					const options = derived(
-						optionsStore as Readable<UserExposedOptions<Options>>,
-						($options) => {
-							const [queryOptions, trpcOptions] = splitUserOptions($options);
-							const key = getArrayQueryKey(path, undefined, queryType);
-							return {
-								...queryOptions,
-								mutationKey: key,
-								mutationFn: (variables) => client.mutation(joinedPath, variables, trpcOptions),
-							} as Options;
-						},
-					);
-					return createMutation(options);
+					const optionsFn = args[0] as
+						| (() => UserExposedOptions<CreateMutationOptions>)
+						| undefined;
+
+					return createMutation(() => {
+						const [queryOptions, trpcOptions] = splitUserOptions(optionsFn?.());
+						const key = getQueryKeyInternal(path, undefined, 'any');
+						return {
+							...queryOptions,
+							mutationKey: key,
+							mutationFn: (variables) => client.mutation(joinedPath, variables, trpcOptions),
+						};
+					});
 				}
 				case 'infiniteQuery': {
-					type Options = inferStoreOrVal<CreateInfiniteQueryOptions>;
-					const options = derived(
-						[inputStore!, optionsStore as Readable<UserExposedOptions<Options>>],
-						([$input, $options]) => {
-							const [queryOptions, trpcOptions] = splitUserOptions($options);
-							const key = getArrayQueryKey(path, $input, queryType);
-							return {
-								...queryOptions,
-								enabled: queryOptions.enabled !== false && browser,
-								queryKey: key,
-								queryFn: (context) => {
-									const input = { ...$input, cursor: context.pageParam };
-									return client.query(joinedPath, input, trpcOptions);
-								},
-							} as Options;
-						},
-					);
-					return createInfiniteQuery(options);
+					const inputFn = args[0] as () => object;
+					const optionsFn = args[1] as () => UserExposedOptions<CreateInfiniteQueryOptions>;
+
+					return createInfiniteQuery(() => {
+						const input = inputFn();
+						const [queryOptions, trpcOptions] = splitUserOptions(optionsFn?.());
+						const key = getQueryKeyInternal(path, input, 'infinite');
+						return {
+							...queryOptions,
+							enabled: !browser ? false : queryOptions.enabled,
+							queryKey: key,
+							queryFn: (context) =>
+								client.query(joinedPath, { ...input, cursor: context.pageParam }, trpcOptions),
+						};
+					});
 				}
-				default:
+				default: {
+					// path looks something like trpc.some.query.utils.invalidate,
+					// so the 2nd last (now last) should be 'utils'
+					if (path[path.length - 1] === 'utils') {
+						return callUtilMethod(client, queryClient, path, method as any, args);
+					}
 					throw new TypeError(`trpc.${joinedPath}.${method} is not a function`);
+				}
 			}
 		});
 	});
