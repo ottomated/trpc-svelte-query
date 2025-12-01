@@ -1,7 +1,7 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import type { AnyTRPCRouter, inferRouterContext } from '@trpc/server';
 import { resolveResponse } from '@trpc/server/http';
-import type { CreateTRPCSvelteServerOptions } from './createTRPCSvelteServer';
+import type { CreateTRPCSvelteServerOptions } from './index';
 
 export type SvelteCreateContextFn<TRouter extends AnyTRPCRouter> = (
 	event: RequestEvent,
@@ -33,8 +33,7 @@ export async function svelteRequestHandler<TRouter extends AnyTRPCRouter>(
 		return opts.createContext?.(event);
 	};
 
-	const url = new URL(event.request.url);
-	const path = url.pathname.slice(opts.endpoint.length + 1);
+	const path = event.url.pathname.slice(opts.endpoint.length + 1);
 
 	const result = await resolveResponse({
 		req: event.request,

@@ -8,7 +8,6 @@ import type {
 	CreateQueryResult,
 	InfiniteData,
 	QueryClientConfig,
-	StoreOrVal,
 	UndefinedInitialDataOptions,
 } from '@tanstack/svelte-query';
 import {
@@ -37,20 +36,16 @@ import { createTRPCFlatProxy, createTRPCRecursiveProxy } from '@trpc/server';
 import type { ProtectedIntersection } from '@trpc/server/unstable-core-do-not-import';
 import { onDestroy, onMount, setContext } from 'svelte';
 import { type Readable, derived, readable } from 'svelte/store';
-import {
-	type TRPCQueryKey,
-	getArrayQueryKey,
-} from './internals/getArrayQueryKey';
-import type { TRPCSSRData } from './server/utils';
+import { type TRPCQueryKey, getQueryKeyInternal } from '../shared/utils';
+import type { TRPCSSRData } from '../server/utils';
 import {
 	type DecorateRouterUtils,
 	type InfiniteQueryUtils,
 	type QueryUtils,
 	type ResolverDef,
 	callUtilMethod,
-} from './shared/utils';
-import { isSvelteStore } from './utils/isSvelteStore';
-import { splitUserOptions } from './utils/splitUserOptions';
+} from './queryUtils';
+import { splitUserOptions } from './splitUserOptions';
 
 /**
  * Options passed to @tanstack/svelte-query that are exposed to the user
@@ -61,13 +56,11 @@ export type UserExposedTanstackQueryOptions<TOptions> = Omit<
 	'queryFn' | 'queryKey' | 'mutationFn' | 'mutationKey'
 >;
 
-type inferStoreOrVal<TStore> = TStore extends StoreOrVal<infer U> ? U : TStore;
-
 /**
  * @internal
  */
-export type UserExposedOptions<TOptions> =
-	UserExposedTanstackQueryOptions<TOptions> & TRPCRequestOptions;
+export type UserExposedOptions<TOptions> = UserExposedTanstackQueryOptions<TOptions> &
+	TRPCRequestOptions;
 
 type DecorateProcedure<
 	TType extends TRPCProcedureType,
@@ -75,33 +68,24 @@ type DecorateProcedure<
 > = TType extends 'query'
 	? {
 			query: <TData = TDef['output']>(
-				input: StoreOrVal<TDef['input']>,
-				options?: StoreOrVal<
-					UserExposedOptions<
-						CreateQueryOptions<
-							TDef['output'],
-							TRPCClientErrorLike<TDef>,
-							TData,
-							TRPCQueryKey
-						>
-					>
+				input: () => TDef['input'],
+				options?: () => UserExposedOptions<
+					CreateQueryOptions<TDef['output'], TRPCClientErrorLike<TDef>, TData, TRPCQueryKey>
 				>,
 			) => CreateQueryResult<TData, TRPCClientErrorLike<TDef>>;
 			utils: QueryUtils<TDef>;
 		} & (TDef['input'] extends { cursor?: infer TCursor }
 			? {
 					infiniteQuery: <TData = InfiniteData<TDef['output'], TCursor>>(
-						input: StoreOrVal<Omit<TDef['input'], 'cursor'>>,
-						options: StoreOrVal<
-							UserExposedOptions<
-								CreateInfiniteQueryOptions<
-									TDef['output'],
-									TRPCClientErrorLike<TDef>,
-									TData,
-									TDef['output'],
-									TRPCQueryKey,
-									TCursor
-								>
+						input: () => Omit<TDef['input'], 'cursor'>,
+						options: () => UserExposedOptions<
+							CreateInfiniteQueryOptions<
+								TDef['output'],
+								TRPCClientErrorLike<TDef>,
+								TData,
+								TDef['output'],
+								TRPCQueryKey,
+								TCursor
 							>
 						>,
 					) => CreateInfiniteQueryResult<TData, TRPCClientErrorLike<TDef>>;
@@ -111,16 +95,12 @@ type DecorateProcedure<
 	: TType extends 'mutation'
 		? {
 				mutation: <TContext = unknown>(
-					opts?: StoreOrVal<
-						UserExposedOptions<
-							inferStoreOrVal<
-								CreateMutationOptions<
-									TDef['output'],
-									TRPCClientErrorLike<TDef>,
-									TDef['input'],
-									TContext
-								>
-							>
+					opts?: () => UserExposedOptions<
+						CreateMutationOptions<
+							TDef['output'],
+							TRPCClientErrorLike<TDef>,
+							TDef['input'],
+							TContext
 						>
 					>,
 				) => CreateMutationResult<
@@ -132,10 +112,7 @@ type DecorateProcedure<
 			}
 		: never;
 
-type DecorateRouterRecord<
-	TRoot extends AnyTRPCRootTypes,
-	TRecord extends TRPCRouterRecord,
-> = {
+type DecorateRouterRecord<TRoot extends AnyTRPCRootTypes, TRecord extends TRPCRouterRecord> = {
 	[TKey in keyof TRecord]: TRecord[TKey] extends infer $Value
 		? $Value extends AnyTRPCProcedure
 			? DecorateProcedure<
@@ -170,14 +147,10 @@ export type CreateTRPCSvelteBase = {
 	hydrateFromServer: (data: () => TRPCSSRData) => QueryClient;
 };
 
-export type CreateTRPCSvelte<TRouter extends AnyTRPCRouter> =
-	ProtectedIntersection<
-		CreateTRPCSvelteBase,
-		DecorateRouterRecord<
-			TRouter['_def']['_config']['$types'],
-			TRouter['_def']['record']
-		>
-	>;
+export type CreateTRPCSvelte<TRouter extends AnyTRPCRouter> = ProtectedIntersection<
+	CreateTRPCSvelteBase,
+	DecorateRouterRecord<TRouter['_def']['_config']['$types'], TRouter['_def']['record']>
+>;
 
 const clientMethods = {
 	query: [1, 'query'],
@@ -247,13 +220,7 @@ function createSvelteInternalProxy<TRouter extends AnyTRPCRouter>(
 			if (!methodData) {
 				const utils = path.pop();
 				if (utils === 'utils') {
-					return callUtilMethod(
-						client,
-						queryClient,
-						path,
-						method as any,
-						unknownArgs,
-					);
+					return callUtilMethod(client, queryClient, path, method as any, unknownArgs);
 				}
 				throw new TypeError(`trpc.${joinedPath}.${method} is not a function`);
 			}
@@ -262,8 +229,7 @@ function createSvelteInternalProxy<TRouter extends AnyTRPCRouter>(
 			const [optionIndex, queryType] = methodData;
 			const options = args[optionIndex] as UserExposedOptions<any> | undefined;
 
-			const optionsStore =
-				options && isSvelteStore(options) ? options : readable(options ?? {});
+			const optionsStore = options && isSvelteStore(options) ? options : readable(options ?? {});
 
 			const inputStore =
 				// Mutation doesn't have input
@@ -275,16 +241,11 @@ function createSvelteInternalProxy<TRouter extends AnyTRPCRouter>(
 						: // wrap the input in a store
 							readable(args[0]);
 
-			// Create the query key - input is undefined for mutations
-
 			switch (method) {
 				case 'query': {
 					type Options = inferStoreOrVal<UndefinedInitialDataOptions>;
 					const options = derived(
-						[
-							inputStore!,
-							optionsStore as Readable<UserExposedOptions<Options>>,
-						],
+						[inputStore!, optionsStore as Readable<UserExposedOptions<Options>>],
 						([$input, $options]) => {
 							const [queryOptions, trpcOptions] = splitUserOptions($options);
 							const key = getArrayQueryKey(path, $input, queryType);
@@ -308,8 +269,7 @@ function createSvelteInternalProxy<TRouter extends AnyTRPCRouter>(
 							return {
 								...queryOptions,
 								mutationKey: key,
-								mutationFn: (variables) =>
-									client.mutation(joinedPath, variables, trpcOptions),
+								mutationFn: (variables) => client.mutation(joinedPath, variables, trpcOptions),
 							} as Options;
 						},
 					);
@@ -318,10 +278,7 @@ function createSvelteInternalProxy<TRouter extends AnyTRPCRouter>(
 				case 'infiniteQuery': {
 					type Options = inferStoreOrVal<CreateInfiniteQueryOptions>;
 					const options = derived(
-						[
-							inputStore!,
-							optionsStore as Readable<UserExposedOptions<Options>>,
-						],
+						[inputStore!, optionsStore as Readable<UserExposedOptions<Options>>],
 						([$input, $options]) => {
 							const [queryOptions, trpcOptions] = splitUserOptions($options);
 							const key = getArrayQueryKey(path, $input, queryType);
@@ -348,10 +305,9 @@ function createSvelteInternalProxy<TRouter extends AnyTRPCRouter>(
 /**
  * @internal
  */
-type CreateTRPCSvelteOptions<TRouter extends AnyTRPCRouter> =
-	CreateTRPCClientOptions<TRouter> & {
-		queryClientConfig?: QueryClientConfig;
-	};
+type CreateTRPCSvelteOptions<TRouter extends AnyTRPCRouter> = CreateTRPCClientOptions<TRouter> & {
+	queryClientConfig?: QueryClientConfig;
+};
 
 export function createTRPCSvelte<TRouter extends AnyTRPCRouter>(
 	opts: CreateTRPCSvelteOptions<TRouter>,

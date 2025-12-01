@@ -21,9 +21,7 @@ export type TRPCSSRData = Map<QueryKey, unknown>;
 /**
  * @internal
  */
-export function hydrateToClient(
-	event: RequestEvent & { locals: RequestEventLocals },
-) {
+export function hydrateToClient(event: RequestEvent & { locals: RequestEventLocals }) {
 	// const event = getRequestEvent() as RequestEvent & {
 	// 	locals: RequestEventLocals;
 	// };
